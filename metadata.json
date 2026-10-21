@@ -1,0 +1,6 @@
+{
+  "name": "MD Viewer",
+  "description": "Lagan, brz i moderan Markdown čitač za pregled tehničke dokumentacije, README fajlova i beležaka sa TOC navigacijom, pretragom i podeljenim prikazom.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
