@@ -49,51 +49,55 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
     const [wordWrap, setWordWrap] = useState(settings.wordWrap ?? true);
     const [copied, setCopied] = useState(false);
 
-    // Undo / Redo history stack
-    const [history, setHistory] = useState<string[]>([content]);
-    const [historyIndex, setHistoryIndex] = useState(0);
+    // Undo / Redo history stack via refs to prevent infinite update depth
+    const historyRef = useRef<string[]>([content]);
+    const historyIndexRef = useRef(0);
     const isHistoryAction = useRef(false);
 
-    // Synchronize history when external content changes (e.g. document switch)
+    // Synchronize history when content changes
     useEffect(() => {
-      if (!isHistoryAction.current) {
-        setHistory((prev) => {
-          if (prev[historyIndex] === content) return prev;
-          const newHist = prev.slice(0, historyIndex + 1);
-          newHist.push(content);
-          if (newHist.length > 50) newHist.shift(); // Limit to 50 states
-          return newHist;
-        });
-        setHistoryIndex((prev) => Math.min(prev + 1, 49));
+      if (isHistoryAction.current) {
+        isHistoryAction.current = false;
+        return;
       }
-      isHistoryAction.current = false;
-    }, [content, historyIndex]);
+      const currentEntry = historyRef.current[historyIndexRef.current];
+      if (currentEntry !== content) {
+        const newHist = historyRef.current.slice(0, historyIndexRef.current + 1);
+        newHist.push(content);
+        if (newHist.length > 50) newHist.shift();
+        historyRef.current = newHist;
+        historyIndexRef.current = newHist.length - 1;
+      }
+    }, [content]);
 
     const handleUndo = () => {
-      if (historyIndex > 0) {
+      if (historyIndexRef.current > 0) {
         isHistoryAction.current = true;
-        const newIdx = historyIndex - 1;
-        setHistoryIndex(newIdx);
-        onChange(history[newIdx]);
+        historyIndexRef.current -= 1;
+        const prevContent = historyRef.current[historyIndexRef.current];
+        onChange(prevContent);
       }
     };
 
     const handleRedo = () => {
-      if (historyIndex < history.length - 1) {
+      if (historyIndexRef.current < historyRef.current.length - 1) {
         isHistoryAction.current = true;
-        const newIdx = historyIndex + 1;
-        setHistoryIndex(newIdx);
-        onChange(history[newIdx]);
+        historyIndexRef.current += 1;
+        const nextContent = historyRef.current[historyIndexRef.current];
+        onChange(nextContent);
       }
     };
+
+    const canUndo = historyIndexRef.current > 0;
+    const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
       focus: () => textareaRef.current?.focus(),
       undo: handleUndo,
       redo: handleRedo,
-      canUndo: historyIndex > 0,
-      canRedo: historyIndex < history.length - 1,
+      canUndo,
+      canRedo,
       replaceSelection: (newText: string) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
@@ -469,7 +473,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={handleUndo}
-              disabled={historyIndex <= 0}
+              disabled={!canUndo}
               className="p-1.5 rounded hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition"
               title="Poništi (Undo - Ctrl+Z)"
             >
@@ -478,7 +482,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={handleRedo}
-              disabled={historyIndex >= history.length - 1}
+              disabled={!canRedo}
               className="p-1.5 rounded hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition"
               title="Ponovi (Redo - Ctrl+Y)"
             >

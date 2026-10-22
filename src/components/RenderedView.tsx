@@ -26,6 +26,12 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
     return renderMarkdownToHtml(content, settings.showLineNumbersInCode);
   }, [content, settings.showLineNumbersInCode]);
 
+  const onImageClickRef = useRef(onImageClick);
+  onImageClickRef.current = onImageClick;
+
+  const onHeadingVisibleRef = useRef(onHeadingVisible);
+  onHeadingVisibleRef.current = onHeadingVisible;
+
   // Set rendered content
   useEffect(() => {
     if (!containerRef.current) return;
@@ -60,15 +66,17 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
         const src = img.getAttribute('src');
         const alt = img.getAttribute('alt') || '';
         if (src) {
-          onImageClick(src, alt);
+          onImageClickRef.current(src, alt);
         }
       });
     });
-  }, [rawHtml, onImageClick]);
+  }, [rawHtml]);
+
+  const lastHeadingRef = useRef<string | null>(null);
 
   // IntersectionObserver for TOC scroll spy
   useEffect(() => {
-    if (!containerRef.current || !onHeadingVisible) return;
+    if (!containerRef.current || !onHeadingVisibleRef.current) return;
 
     const headings = containerRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6');
     if (headings.length === 0) return;
@@ -77,7 +85,10 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting && entry.target.id) {
-            onHeadingVisible(entry.target.id);
+            if (lastHeadingRef.current !== entry.target.id) {
+              lastHeadingRef.current = entry.target.id;
+              onHeadingVisibleRef.current?.(entry.target.id);
+            }
             break;
           }
         }
@@ -91,7 +102,10 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
 
     headings.forEach((h) => observer.observe(h));
     return () => observer.disconnect();
-  }, [rawHtml, onHeadingVisible]);
+  }, [rawHtml]);
+
+  const onUpdateTotalMatchesRef = useRef(onUpdateTotalMatches);
+  onUpdateTotalMatchesRef.current = onUpdateTotalMatches;
 
   // In-DOM search highlighting and navigation
   useEffect(() => {
@@ -109,7 +123,9 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
     });
 
     if (!searchState.isOpen || !searchState.query.trim()) {
-      onUpdateTotalMatches(0);
+      if (searchState.totalMatches !== 0) {
+        onUpdateTotalMatchesRef.current(0);
+      }
       return;
     }
 
@@ -123,7 +139,9 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
     try {
       regex = new RegExp(regexPattern, flags);
     } catch {
-      onUpdateTotalMatches(0);
+      if (searchState.totalMatches !== 0) {
+        onUpdateTotalMatchesRef.current(0);
+      }
       return;
     }
 
@@ -189,7 +207,9 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
       node.parentNode?.replaceChild(fragment, node);
     });
 
-    onUpdateTotalMatches(matchCounter);
+    if (searchState.totalMatches !== matchCounter) {
+      onUpdateTotalMatchesRef.current(matchCounter);
+    }
 
     // Scroll to current active match
     if (matchCounter > 0) {
@@ -212,7 +232,6 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
     searchState.matchCase,
     searchState.wholeWord,
     searchState.currentIndex,
-    onUpdateTotalMatches,
   ]);
 
   // Width classes

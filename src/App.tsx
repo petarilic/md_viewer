@@ -137,6 +137,23 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<EditorViewRef>(null);
 
+  // Memoized search total matches updater to avoid re-renders
+  const handleUpdateTotalMatches = useCallback((total: number) => {
+    setSearchState((prev) => {
+      if (prev.totalMatches === total) return prev;
+      return { ...prev, totalMatches: total };
+    });
+  }, []);
+
+  // Memoized image click and heading visibility callbacks
+  const handleImageClick = useCallback((src: string, alt: string) => {
+    setLightbox({ src, alt });
+  }, []);
+
+  const handleHeadingVisible = useCallback((headingId: string) => {
+    setActiveHeadingId((prev) => (prev === headingId ? prev : headingId));
+  }, []);
+
   // Toast helper
   const showToast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({
@@ -184,11 +201,10 @@ export default function App() {
   const addDocument = useCallback(
     (newDoc: DocumentItem, activateMode?: ViewMode) => {
       setDocuments((prev) => {
-        const existingIndex = prev.findIndex(
+        const existing = prev.find(
           (d) => d.id === newDoc.id || (d.name === newDoc.name && d.size === newDoc.size)
         );
-        if (existingIndex >= 0) {
-          setActiveDocId(prev[existingIndex].id);
+        if (existing) {
           return prev;
         }
         return [...prev, newDoc];
@@ -804,11 +820,9 @@ export default function App() {
                   content={activeDocument.content}
                   settings={settings}
                   searchState={searchState}
-                  onUpdateTotalMatches={(total) =>
-                    setSearchState((prev) => ({ ...prev, totalMatches: total }))
-                  }
-                  onImageClick={(src, alt) => setLightbox({ src, alt })}
-                  onHeadingVisible={setActiveHeadingId}
+                  onUpdateTotalMatches={handleUpdateTotalMatches}
+                  onImageClick={handleImageClick}
+                  onHeadingVisible={handleHeadingVisible}
                 />
               )}
 
@@ -828,10 +842,8 @@ export default function App() {
                   onChangeContent={handleContentChange}
                   settings={settings}
                   searchState={searchState}
-                  onUpdateTotalMatches={(total) =>
-                    setSearchState((prev) => ({ ...prev, totalMatches: total }))
-                  }
-                  onImageClick={(src, alt) => setLightbox({ src, alt })}
+                  onUpdateTotalMatches={handleUpdateTotalMatches}
+                  onImageClick={handleImageClick}
                   onCopySuccess={() => showToast('Izvorni tekst kopiran!')}
                   editorRef={editorRef}
                 />
