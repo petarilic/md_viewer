@@ -1,0 +1,557 @@
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
+import {
+  Bold,
+  Italic,
+  Strikethrough,
+  Heading1,
+  Heading2,
+  Heading3,
+  Quote,
+  Code,
+  FileCode,
+  Link,
+  Image,
+  List,
+  ListOrdered,
+  CheckSquare,
+  Table,
+  Minus,
+  Undo2,
+  Redo2,
+  WrapText,
+  Copy,
+  Check,
+} from 'lucide-react';
+import { ViewerSettings } from '../types';
+
+export interface EditorViewRef {
+  focus: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  replaceSelection: (newText: string) => void;
+  replaceAll: (findText: string, replaceText: string, matchCase: boolean, wholeWord: boolean) => number;
+  selectMatch: (start: number, length: number) => void;
+}
+
+interface EditorViewProps {
+  content: string;
+  onChange: (newContent: string) => void;
+  settings: ViewerSettings;
+  onCopySuccess: () => void;
+}
+
+export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
+  ({ content, onChange, settings, onCopySuccess }, ref) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const lineNumbersRef = useRef<HTMLDivElement>(null);
+    const [wordWrap, setWordWrap] = useState(settings.wordWrap ?? true);
+    const [copied, setCopied] = useState(false);
+
+    // Undo / Redo history stack
+    const [history, setHistory] = useState<string[]>([content]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+    const isHistoryAction = useRef(false);
+
+    // Synchronize history when external content changes (e.g. document switch)
+    useEffect(() => {
+      if (!isHistoryAction.current) {
+        setHistory((prev) => {
+          if (prev[historyIndex] === content) return prev;
+          const newHist = prev.slice(0, historyIndex + 1);
+          newHist.push(content);
+          if (newHist.length > 50) newHist.shift(); // Limit to 50 states
+          return newHist;
+        });
+        setHistoryIndex((prev) => Math.min(prev + 1, 49));
+      }
+      isHistoryAction.current = false;
+    }, [content, historyIndex]);
+
+    const handleUndo = () => {
+      if (historyIndex > 0) {
+        isHistoryAction.current = true;
+        const newIdx = historyIndex - 1;
+        setHistoryIndex(newIdx);
+        onChange(history[newIdx]);
+      }
+    };
+
+    const handleRedo = () => {
+      if (historyIndex < history.length - 1) {
+        isHistoryAction.current = true;
+        const newIdx = historyIndex + 1;
+        setHistoryIndex(newIdx);
+        onChange(history[newIdx]);
+      }
+    };
+
+    // Expose methods via ref
+    useImperativeHandle(ref, () => ({
+      focus: () => textareaRef.current?.focus(),
+      undo: handleUndo,
+      redo: handleRedo,
+      canUndo: historyIndex > 0,
+      canRedo: historyIndex < history.length - 1,
+      replaceSelection: (newText: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const before = textarea.value.substring(0, start);
+        const after = textarea.value.substring(end);
+        const updated = before + newText + after;
+        onChange(updated);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start, start + newText.length);
+        }, 10);
+      },
+      replaceAll: (findText: string, replaceText: string, matchCase: boolean, wholeWord: boolean) => {
+        if (!findText) return 0;
+        const flags = matchCase ? 'g' : 'gi';
+        const escaped = findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = wholeWord ? `\\b${escaped}\\b` : escaped;
+        const regex = new RegExp(pattern, flags);
+        const matchesCount = (content.match(regex) || []).length;
+        if (matchesCount > 0) {
+          const updated = content.replace(regex, replaceText);
+          onChange(updated);
+        }
+        return matchesCount;
+      },
+      selectMatch: (start: number, length: number) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        textarea.focus();
+        textarea.setSelectionRange(start, start + length);
+        // Scroll roughly to selection
+        const line = textarea.value.substring(0, start).split('\n').length;
+        const lineHeight = 24;
+        textarea.scrollTop = Math.max(0, (line - 5) * lineHeight);
+      },
+    }));
+
+    // Insert formatting helper
+    const insertFormatting = (prefix: string, suffix = '', defaultText = '') => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = textarea.value.substring(start, end) || defaultText;
+
+      const replacement = `${prefix}${selected}${suffix}`;
+      const before = textarea.value.substring(0, start);
+      const after = textarea.value.substring(end);
+
+      const newContent = before + replacement + after;
+      onChange(newContent);
+
+      setTimeout(() => {
+        textarea.focus();
+        if (selected === defaultText) {
+          textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+        } else {
+          textarea.setSelectionRange(
+            start + prefix.length,
+            start + prefix.length + selected.length
+          );
+        }
+      }, 10);
+    };
+
+    // Line prefix helper (for lists, quotes, headings)
+    const toggleLinePrefix = (prefix: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const val = textarea.value;
+
+      // Find start of current line
+      const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+      const lineEnd = val.indexOf('\n', end);
+      const effectiveLineEnd = lineEnd === -1 ? val.length : lineEnd;
+
+      const currentLine = val.substring(lineStart, effectiveLineEnd);
+      let newLine = currentLine;
+
+      if (currentLine.startsWith(prefix)) {
+        newLine = currentLine.substring(prefix.length);
+      } else {
+        newLine = prefix + currentLine;
+      }
+
+      const newContent = val.substring(0, lineStart) + newLine + val.substring(effectiveLineEnd);
+      onChange(newContent);
+
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+      }, 10);
+    };
+
+    // Keyboard handlers (Tab, Enter with auto-indent, shortcuts)
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      // Undo / Redo shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          handleRedo();
+        } else {
+          e.preventDefault();
+          handleUndo();
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Tab key
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+
+        const updated = val.substring(0, start) + '  ' + val.substring(end);
+        onChange(updated);
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 2;
+        }, 0);
+        return;
+      }
+
+      // Enter key with auto-indent & list continuation
+      if (e.key === 'Enter') {
+        const start = textarea.selectionStart;
+        const val = textarea.value;
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const currentLine = val.substring(lineStart, start);
+
+        // Check for list prefixes
+        const listMatch = currentLine.match(/^(\s*)([-*+]\s+\[[ x]\]\s+|[-*+]\s+|\d+\.\s+)/i);
+        if (listMatch) {
+          const [fullMatch, indent, marker] = listMatch;
+          // If line is empty list item, hitting enter removes it
+          if (currentLine.trim() === marker.trim()) {
+            e.preventDefault();
+            const updated = val.substring(0, lineStart) + val.substring(start);
+            onChange(updated);
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = lineStart;
+            }, 0);
+            return;
+          }
+
+          // Otherwise continue list
+          e.preventDefault();
+          let nextMarker = marker;
+          const numMatch = marker.match(/^(\d+)\.\s+/);
+          if (numMatch) {
+            nextMarker = `${parseInt(numMatch[1], 10) + 1}. `;
+          } else if (marker.includes('[')) {
+            nextMarker = '- [ ] ';
+          }
+
+          const continuation = `\n${indent}${nextMarker}`;
+          const updated = val.substring(0, start) + continuation + val.substring(start);
+          onChange(updated);
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + continuation.length;
+          }, 0);
+          return;
+        }
+
+        // Keep spaces indent
+        const indentMatch = currentLine.match(/^(\s+)/);
+        if (indentMatch) {
+          e.preventDefault();
+          const continuation = `\n${indentMatch[1]}`;
+          const updated = val.substring(0, start) + continuation + val.substring(start);
+          onChange(updated);
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + continuation.length;
+          }, 0);
+          return;
+        }
+      }
+    };
+
+    // Synchronize scrolling between textarea and line numbers
+    const handleScroll = () => {
+      if (textareaRef.current && lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+      }
+    };
+
+    const handleCopyAll = () => {
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      onCopySuccess();
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    const lines = content.split('\n');
+
+    // Font size classes
+    const fontSizeClasses = {
+      sm: 'text-xs',
+      base: 'text-sm',
+      lg: 'text-base',
+      xl: 'text-lg',
+    };
+
+    return (
+      <div className="w-full h-full flex flex-col bg-slate-900 text-slate-100 font-mono">
+        {/* Formatting Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-2 border-b border-slate-800 bg-slate-950/70 text-slate-300 text-xs select-none no-print">
+          {/* Markdown Format Buttons */}
+          <div className="flex items-center gap-0.5 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => insertFormatting('**', '**', 'podebljan tekst')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Podebljano (Bold - **tekst**)"
+            >
+              <Bold className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatting('*', '*', 'kurzivni tekst')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Kurziv (Italic - *tekst*)"
+            >
+              <Italic className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatting('~~', '~~', 'precrtan tekst')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Precrtano (Strikethrough - ~~tekst~~)"
+            >
+              <Strikethrough className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-slate-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('# ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Naslov 1 (# H1)"
+            >
+              <Heading1 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('## ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Naslov 2 (## H2)"
+            >
+              <Heading2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('### ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Naslov 3 (### H3)"
+            >
+              <Heading3 className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-slate-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('- ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Nenumerisana lista (- stavka)"
+            >
+              <List className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('1. ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Numerisana lista (1. stavka)"
+            >
+              <ListOrdered className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('- [ ] ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Task lista (- [ ] zadatak)"
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-slate-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => toggleLinePrefix('> ')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Citat (> citat)"
+            >
+              <Quote className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatting('`', '`', 'kod')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Inline kôd (`kod`)"
+            >
+              <Code className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatting('```\n', '\n```', '// kôd ovde')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Blok koda (```)"
+            >
+              <FileCode className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-slate-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => insertFormatting('[', '](https://)', 'tekst linka')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Link ([tekst](url))"
+            >
+              <Link className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatting('![', '](https://)', 'opis slike')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Slika (![opis](url))"
+            >
+              <Image className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                insertFormatting(
+                  '\n| Kolona 1 | Kolona 2 |\n| :--- | :--- |\n| Podatak 1 | Podatak 2 |\n'
+                )
+              }
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Tabela"
+            >
+              <Table className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => insertFormatting('\n---\n')}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              title="Horizontalna linija (---)"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Right Actions: Undo/Redo & Wrap & Copy */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition"
+              title="Poništi (Undo - Ctrl+Z)"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              className="p-1.5 rounded hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition"
+              title="Ponovi (Redo - Ctrl+Y)"
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="w-px h-4 bg-slate-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={() => setWordWrap(!wordWrap)}
+              className={`p-1.5 rounded transition ${
+                wordWrap
+                  ? 'bg-blue-900/50 text-blue-300'
+                  : 'hover:bg-slate-800 hover:text-white text-slate-400'
+              }`}
+              title="Prelom redova (Word Wrap)"
+            >
+              <WrapText className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyAll}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition cursor-pointer"
+              title="Kopiraj ceo Markdown sadržaj"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span className="text-[11px] text-emerald-400">Kopirano!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span className="text-[11px] hidden sm:inline">Kopiraj</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Editor Area with Line Numbers */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Line Numbers Column */}
+          <div
+            ref={lineNumbersRef}
+            className="w-12 py-3 pr-2 text-right text-slate-600 bg-slate-950/30 border-r border-slate-800 select-none overflow-hidden font-mono shrink-0"
+          >
+            {lines.map((_, i) => (
+              <div key={i} className={`${fontSizeClasses[settings.fontSize]} leading-6`}>
+                {i + 1}
+              </div>
+            ))}
+          </div>
+
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onScroll={handleScroll}
+            spellCheck={false}
+            className={`flex-1 p-3 bg-transparent text-slate-100 ${
+              fontSizeClasses[settings.fontSize]
+            } leading-6 font-mono outline-none resize-none overflow-y-auto ${
+              wordWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
+            }`}
+            placeholder="Unesite Markdown tekst ovde..."
+          />
+        </div>
+      </div>
+    );
+  }
+);

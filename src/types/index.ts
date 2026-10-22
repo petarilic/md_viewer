@@ -1,4 +1,4 @@
-export type ViewMode = 'rendered' | 'source' | 'split';
+export type ViewMode = 'rendered' | 'edit' | 'split';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -18,16 +18,20 @@ export interface ViewerSettings {
   showToc: boolean;
   syncScroll: boolean;
   codeTheme: CodeTheme;
+  wordWrap: boolean;
 }
 
 export interface DocumentItem {
   id: string;
   name: string;
   content: string;
+  initialContent: string;
+  isModified: boolean;
   size: number;
   lastModified: number;
-  source: 'local' | 'url' | 'sample';
+  source: 'local' | 'url' | 'sample' | 'new';
   url?: string;
+  fileHandle?: any; // FileSystemFileHandle for native File System Access API
 }
 
 export interface TocItem {
@@ -39,7 +43,9 @@ export interface TocItem {
 
 export interface SearchState {
   isOpen: boolean;
+  isReplaceOpen: boolean;
   query: string;
+  replaceText: string;
   matchCase: boolean;
   wholeWord: boolean;
   currentIndex: number;
@@ -52,4 +58,14 @@ export interface DocumentStats {
   lines: number;
   readingTimeMinutes: number;
   fileSizeBytes: number;
+}
+
+export type TemplateId = 'empty' | 'readme' | 'spec' | 'meeting' | 'docs';
+
+export interface DocumentTemplate {
+  id: TemplateId;
+  name: string;
+  description: string;
+  defaultFilename: string;
+  content: string;
 }

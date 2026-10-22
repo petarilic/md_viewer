@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
   FileUp,
   FolderOpen,
+  FilePlus,
   Globe,
   Sparkles,
   ShieldCheck,
@@ -12,6 +13,7 @@ import {
 import { DocumentItem } from '../types';
 
 interface EmptyStateProps {
+  onNewFile: () => void;
   onOpenFile: () => void;
   onOpenUrl: () => void;
   onOpenSample: (sampleKey: 'spec' | 'showcase' | 'quickstart') => void;
@@ -21,6 +23,7 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
+  onNewFile,
   onOpenFile,
   onOpenUrl,
   onOpenSample,
@@ -35,75 +38,83 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-xs font-medium">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Brz i moderan Markdown pregledač</span>
+            <span>Kompletan Markdown pregledač i editor</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-            MD Viewer
+            MD Viewer & Editor
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-md mx-auto">
-            Otvorite Markdown fajlove sa vašeg računara, prevucite ih ovde ili istražite tehničku dokumentaciju sa TOC navigacijom.
+          <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
+            Kreirajte nove dokumente, uređujte postojeće Markdown fajlove sa živim prikazom, pretražujte sadržaj i izvozite u DOCX, TXT ili PDF formate.
           </p>
+        </div>
+
+        {/* Action Buttons: New, Open, URL */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={onNewFile}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition hover:shadow cursor-pointer"
+          >
+            <FilePlus className="w-4 h-4" />
+            <span>Novi Markdown dokument</span>
+          </button>
+
+          <button
+            onClick={onOpenFile}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-medium transition cursor-pointer"
+          >
+            <FolderOpen className="w-4 h-4 text-amber-500" />
+            <span>Otvori sa računara</span>
+          </button>
+
+          <button
+            onClick={onOpenUrl}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium transition cursor-pointer"
+          >
+            <Globe className="w-4 h-4 text-blue-500" />
+            <span>Sa URL-a</span>
+          </button>
         </div>
 
         {/* Drag & Drop Card */}
         <div
           onClick={onOpenFile}
-          className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 transition-all cursor-pointer group flex flex-col items-center justify-center gap-4 ${
+          className={`border-2 border-dashed rounded-3xl p-8 sm:p-10 transition-all cursor-pointer group flex flex-col items-center justify-center gap-3 ${
             isDragging
               ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-950/40 scale-[1.01]'
               : 'border-slate-300 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 bg-white dark:bg-slate-900/60 shadow-xs'
           }`}
         >
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition duration-200">
-            <FileUp className="w-8 h-8" />
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition duration-200">
+            <FileUp className="w-7 h-7" />
           </div>
 
           <div className="space-y-1">
-            <div className="text-base font-semibold text-slate-800 dark:text-slate-200">
-              Prevucite <span className="text-blue-600 dark:text-blue-400">.md fajl</span> ovde
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Ili prevucite <span className="text-blue-600 dark:text-blue-400">.md fajl</span> ovde
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              ili kliknite za izbor sa lokalnog računara
+              automatski se otvara u kartici spremnoj za uređivanje i pregled
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
               .md
             </span>
-            <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
               .markdown
             </span>
-            <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
               .mdown
             </span>
-            <span className="text-[11px] font-mono px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              .mkd
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              .txt
             </span>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <button
-            onClick={onOpenFile}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-sm transition hover:shadow cursor-pointer"
-          >
-            <FolderOpen className="w-4 h-4" />
-            <span>Otvori fajl sa računara</span>
-          </button>
-
-          <button
-            onClick={onOpenUrl}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-medium transition cursor-pointer"
-          >
-            <Globe className="w-4 h-4 text-blue-500" />
-            <span>Učitaj sa URL-a</span>
-          </button>
         </div>
 
         {/* Quick Sample Documents */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
           <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">
             Ili započnite sa pripremljenim primerima:
           </div>
@@ -117,10 +128,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition" />
               </div>
               <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                Specifikacija Projekta
+                Objedinjena Specifikacija
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Kompletna funkcionalna specifikacija v1.0
+                Kompletna specifikacija v1.2 (Viewer & Editor)
               </div>
             </button>
 
@@ -149,10 +160,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition" />
               </div>
               <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                Brzi Vodič
+                Korisnički Vodič
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Prečice tastature i opcije prikaza
+                Uređivanje, Save/Save As i DOCX/TXT izvoz
               </div>
             </button>
           </div>
@@ -182,7 +193,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {/* Privacy badge */}
         <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <ShieldCheck className="w-4 h-4 text-emerald-500" />
-          <span>Privatnost zagarantovana: svi fajlovi se obrađuju isključivo lokalno u vašem pregledaču.</span>
+          <span>100% lokalna obrada — vaši fajlovi nikada ne napuštaju vaš pregledač.</span>
         </div>
       </div>
     </div>

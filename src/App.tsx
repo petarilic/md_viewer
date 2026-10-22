@@ -12,17 +12,26 @@ import {
   DocumentStats,
 } from './types';
 import { extractToc, calculateDocumentStats } from './utils/markdown';
-import { SHOWCASE_MD, QUICKSTART_MD, SPECIFICATION_DOC_NAME } from './data/samples';
+import { exportToDocx, exportToTxt } from './utils/export';
+import {
+  saveDocument,
+  saveDocumentAs,
+  downloadMarkdown,
+  openFileWithPicker,
+} from './utils/fileSystem';
+import { SHOWCASE_MD, QUICKSTART_MD } from './data/samples';
 import { HeaderToolbar } from './components/HeaderToolbar';
 import { TabBar } from './components/TabBar';
 import { TOCSidebar } from './components/TOCSidebar';
 import { RenderedView } from './components/RenderedView';
-import { SourceView } from './components/SourceView';
+import { EditorView, EditorViewRef } from './components/EditorView';
 import { SplitView } from './components/SplitView';
 import { StatusBar } from './components/StatusBar';
 import { SearchOverlay } from './components/SearchOverlay';
 import { SettingsModal } from './components/SettingsModal';
 import { UrlOpenModal } from './components/UrlOpenModal';
+import { NewDocumentModal } from './components/NewDocumentModal';
+import { UnsavedChangesModal } from './components/UnsavedChangesModal';
 import { EmptyState } from './components/EmptyState';
 import { ImageLightbox } from './components/ImageLightbox';
 import { Toast, ToastMessage } from './components/Toast';
@@ -37,6 +46,7 @@ const DEFAULT_SETTINGS: ViewerSettings = {
   showToc: true,
   syncScroll: true,
   codeTheme: 'github-dark',
+  wordWrap: true,
 };
 
 export default function App() {
@@ -53,7 +63,7 @@ export default function App() {
     return DEFAULT_SETTINGS;
   });
 
-  // Theme application
+  // Apply Theme
   useEffect(() => {
     const root = document.documentElement;
     const isDark =
@@ -95,16 +105,29 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
+  const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
+
+  // Unsaved changes confirmation modal state
+  const [unsavedModal, setUnsavedModal] = useState<{
+    isOpen: boolean;
+    docId: string;
+    docName: string;
+    pendingAction: () => void;
+  } | null>(null);
+
+  // Lightbox & Toast
   const [lightbox, setLightbox] = useState<{ src: string | null; alt: string }>({
     src: null,
     alt: '',
   });
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  // Search State
+  // Search State with Replace
   const [searchState, setSearchState] = useState<SearchState>({
     isOpen: false,
+    isReplaceOpen: false,
     query: '',
+    replaceText: '',
     matchCase: false,
     wholeWord: false,
     currentIndex: 0,
@@ -112,8 +135,9 @@ export default function App() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<EditorViewRef>(null);
 
-  // Show toast helper
+  // Toast helper
   const showToast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({
       id: String(Date.now()),
@@ -122,12 +146,12 @@ export default function App() {
     });
   }, []);
 
-  // Active document memo
+  // Active document
   const activeDocument = useMemo(() => {
     return documents.find((doc) => doc.id === activeDocId) || null;
   }, [documents, activeDocId]);
 
-  // Extract Table of Contents from active document
+  // TOC extraction
   const toc = useMemo(() => {
     if (!activeDocument) return [];
     return extractToc(activeDocument.content);
@@ -145,7 +169,8 @@ export default function App() {
   const addToRecent = useCallback((doc: DocumentItem) => {
     setRecentDocuments((prev) => {
       const filtered = prev.filter((d) => d.id !== doc.id && d.name !== doc.name);
-      const updated = [doc, ...filtered].slice(0, 8);
+      const cleanDoc = { ...doc, isModified: false };
+      const updated = [cleanDoc, ...filtered].slice(0, 8);
       try {
         localStorage.setItem('md_viewer_recent', JSON.stringify(updated));
       } catch {
@@ -155,9 +180,9 @@ export default function App() {
     });
   }, []);
 
-  // Add document to state
+  // Add document
   const addDocument = useCallback(
-    (newDoc: DocumentItem) => {
+    (newDoc: DocumentItem, activateMode?: ViewMode) => {
       setDocuments((prev) => {
         const existingIndex = prev.findIndex(
           (d) => d.id === newDoc.id || (d.name === newDoc.name && d.size === newDoc.size)
@@ -170,68 +195,107 @@ export default function App() {
       });
       setActiveDocId(newDoc.id);
       addToRecent(newDoc);
+      if (activateMode) {
+        setViewMode(activateMode);
+      }
     },
     [addToRecent]
   );
 
-  // Load sample documents
+  // Window beforeunload protection if any document has unsaved modifications
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasUnsaved = documents.some((d) => d.isModified);
+      if (hasUnsaved) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [documents]);
+
+  // Load sample documents on mount or request
   const handleOpenSample = useCallback(
     async (sampleKey: 'spec' | 'showcase' | 'quickstart') => {
       if (sampleKey === 'spec') {
         try {
-          const res = await fetch('/assets/aistudio/md_file_viewer_specification_v1_654a0199.md');
+          // Attempt to load the combined specification v1.1
+          const res = await fetch(
+            '/assets/aistudio/MD_Viewer_Editor_Combined_Specification_v1.1_49ae6945.md'
+          );
           if (res.ok) {
             const text = await res.text();
-            addDocument({
-              id: 'spec-v1',
-              name: SPECIFICATION_DOC_NAME,
-              content: text,
-              size: new Blob([text]).size,
-              lastModified: Date.now(),
-              source: 'sample',
-            });
-            showToast('Učitana specifikacija aplikacije!');
+            addDocument(
+              {
+                id: 'spec-combined-v1.2',
+                name: 'MD_Viewer_Editor_Specifikacija_v1.2.md',
+                content: text,
+                initialContent: text,
+                isModified: false,
+                size: new Blob([text]).size,
+                lastModified: Date.now(),
+                source: 'sample',
+              },
+              'rendered'
+            );
+            showToast('Učitana objedinjena specifikacija MD Viewer & Editor-a!');
             return;
           }
         } catch {
-          // fallback to showcase if fetch fails
+          // fallback
         }
-        // Fallback
-        addDocument({
-          id: 'spec-v1-fallback',
-          name: 'Specifikacija_MD_Viewer.md',
-          content: SHOWCASE_MD,
-          size: new Blob([SHOWCASE_MD]).size,
-          lastModified: Date.now(),
-          source: 'sample',
-        });
+        // Fallback to showcase
+        addDocument(
+          {
+            id: 'spec-v1-fallback',
+            name: 'Specifikacija_MD_Viewer_Editor.md',
+            content: SHOWCASE_MD,
+            initialContent: SHOWCASE_MD,
+            isModified: false,
+            size: new Blob([SHOWCASE_MD]).size,
+            lastModified: Date.now(),
+            source: 'sample',
+          },
+          'rendered'
+        );
         showToast('Učitan Markdown vodič!');
       } else if (sampleKey === 'showcase') {
-        addDocument({
-          id: 'sample-showcase',
-          name: 'Markdown_GFM_Vodic.md',
-          content: SHOWCASE_MD,
-          size: new Blob([SHOWCASE_MD]).size,
-          lastModified: Date.now(),
-          source: 'sample',
-        });
+        addDocument(
+          {
+            id: 'sample-showcase',
+            name: 'Markdown_GFM_Vodic.md',
+            content: SHOWCASE_MD,
+            initialContent: SHOWCASE_MD,
+            isModified: false,
+            size: new Blob([SHOWCASE_MD]).size,
+            lastModified: Date.now(),
+            source: 'sample',
+          },
+          'rendered'
+        );
         showToast('Učitan kompletan Markdown & GFM vodič!');
       } else {
-        addDocument({
-          id: 'sample-quickstart',
-          name: 'Brzi_Vodic_za_Korisnike.md',
-          content: QUICKSTART_MD,
-          size: new Blob([QUICKSTART_MD]).size,
-          lastModified: Date.now(),
-          source: 'sample',
-        });
-        showToast('Učitan brzi vodič za korišćenje!');
+        addDocument(
+          {
+            id: 'sample-quickstart',
+            name: 'Korisnicki_Vodic_za_Editor.md',
+            content: QUICKSTART_MD,
+            initialContent: QUICKSTART_MD,
+            isModified: false,
+            size: new Blob([QUICKSTART_MD]).size,
+            lastModified: Date.now(),
+            source: 'sample',
+          },
+          'rendered'
+        );
+        showToast('Učitan korisnički vodič!');
       }
     },
     [addDocument, showToast]
   );
 
-  // Initial load: Open specification file as initial document for immediate wow effect!
+  // Initial load
   useEffect(() => {
     if (documents.length === 0) {
       handleOpenSample('spec');
@@ -239,7 +303,145 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // File open via system dialog
+  // Update document content when edited
+  const handleContentChange = (newContent: string) => {
+    if (!activeDocId) return;
+
+    setDocuments((prev) =>
+      prev.map((doc) => {
+        if (doc.id !== activeDocId) return doc;
+        const isModified = newContent !== doc.initialContent;
+        return {
+          ...doc,
+          content: newContent,
+          isModified,
+          size: new Blob([newContent]).size,
+        };
+      })
+    );
+  };
+
+  // Rename document
+  const handleRenameDocument = (newName: string) => {
+    if (!activeDocId) return;
+    setDocuments((prev) =>
+      prev.map((doc) => (doc.id === activeDocId ? { ...doc, name: newName } : doc))
+    );
+    showToast(`Naziv dokumenta promenjen u "${newName}".`);
+  };
+
+  // Save operation (Ctrl+S or Toolbar)
+  const handleSave = async (targetDoc = activeDocument) => {
+    if (!targetDoc) return;
+
+    try {
+      const result = await saveDocument(targetDoc);
+      if (result.success) {
+        setDocuments((prev) =>
+          prev.map((doc) => {
+            if (doc.id !== targetDoc.id) return doc;
+            return {
+              ...doc,
+              initialContent: doc.content,
+              isModified: false,
+              name: result.name,
+              fileHandle: result.fileHandle || doc.fileHandle,
+              lastModified: Date.now(),
+            };
+          })
+        );
+        if (result.method === 'direct') {
+          showToast(`Dokument "${result.name}" uspešno sačuvan na disk!`);
+        } else {
+          showToast(`Dokument preuzet kao "${result.name}".`);
+        }
+      }
+    } catch {
+      showToast('Greška pri čuvanju dokumenta.', 'error');
+    }
+  };
+
+  // Save As operation (Save As dialog or download)
+  const handleSaveAs = async () => {
+    if (!activeDocument) return;
+
+    try {
+      const result = await saveDocumentAs(activeDocument);
+      if (result.success) {
+        setDocuments((prev) =>
+          prev.map((doc) => {
+            if (doc.id !== activeDocument.id) return doc;
+            return {
+              ...doc,
+              name: result.name,
+              initialContent: doc.content,
+              isModified: false,
+              fileHandle: result.fileHandle || doc.fileHandle,
+              lastModified: Date.now(),
+            };
+          })
+        );
+        showToast(`Dokument uspešno sačuvan kao "${result.name}"!`);
+      }
+    } catch {
+      showToast('Greška pri čuvanju fajla.', 'error');
+    }
+  };
+
+  // New Document creation
+  const handleRequestNewFile = () => {
+    if (activeDocument && activeDocument.isModified) {
+      setUnsavedModal({
+        isOpen: true,
+        docId: activeDocument.id,
+        docName: activeDocument.name,
+        pendingAction: () => setIsNewDocModalOpen(true),
+      });
+    } else {
+      setIsNewDocModalOpen(true);
+    }
+  };
+
+  const handleCreateDocument = (name: string, content: string) => {
+    const newDoc: DocumentItem = {
+      id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name,
+      content,
+      initialContent: content,
+      isModified: false,
+      size: new Blob([content]).size,
+      lastModified: Date.now(),
+      source: 'new',
+    };
+    addDocument(newDoc, 'edit');
+    showToast(`Dokument "${name}" uspešno kreiran.`);
+  };
+
+  // Open File with File System Access API or input dialog
+  const handleRequestOpenFile = async () => {
+    // Check if browser supports File System Access API
+    const opened = await openFileWithPicker();
+    if (opened) {
+      const newDoc: DocumentItem = {
+        id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: opened.name,
+        content: opened.content,
+        initialContent: opened.content,
+        isModified: false,
+        size: opened.size,
+        lastModified: opened.lastModified,
+        source: 'local',
+        fileHandle: opened.fileHandle,
+      };
+      addDocument(newDoc, 'rendered');
+      showToast(`Fajl "${opened.name}" uspešno otvoren.`);
+      return;
+    }
+
+    // Fallback: trigger standard hidden input
+    fileInputRef.current?.click();
+  };
+
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -252,12 +454,14 @@ export default function App() {
           id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           name: file.name,
           content: text || '',
+          initialContent: text || '',
+          isModified: false,
           size: file.size,
           lastModified: file.lastModified,
           source: 'local',
         };
-        addDocument(newDoc);
-        showToast(`Dokument "${file.name}" uspešno učitan.`);
+        addDocument(newDoc, 'rendered');
+        showToast(`Fajl "${file.name}" uspešno učitan.`);
       };
       reader.onerror = () => {
         showToast(`Greška pri čitanju fajla ${file.name}.`, 'error');
@@ -265,11 +469,10 @@ export default function App() {
       reader.readAsText(file, 'UTF-8');
     });
 
-    // Reset input
     e.target.value = '';
   };
 
-  // Drag and Drop handlers
+  // Drag and Drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -290,15 +493,7 @@ export default function App() {
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
 
-    let loadedCount = 0;
     Array.from(files).forEach((file) => {
-      // Check file extension
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      if (!['md', 'markdown', 'mdown', 'mkd', 'txt'].includes(ext || '')) {
-        showToast(`Fajl "${file.name}" nije podržanog Markdown formata.`, 'error');
-        return;
-      }
-
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
@@ -306,22 +501,21 @@ export default function App() {
           id: `${file.name}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           name: file.name,
           content: text || '',
+          initialContent: text || '',
+          isModified: false,
           size: file.size,
           lastModified: file.lastModified,
           source: 'local',
         };
-        addDocument(newDoc);
-        loadedCount++;
-        if (loadedCount === files.length) {
-          showToast(`Učitano ${files.length} fajl(ova).`);
-        }
+        addDocument(newDoc, 'rendered');
+        showToast(`Učitan fajl "${file.name}".`);
       };
       reader.readAsText(file, 'UTF-8');
     });
   };
 
-  // Close tab
-  const handleCloseDoc = (id: string) => {
+  // Close tab with unsaved changes verification
+  const performCloseDoc = (id: string) => {
     setDocuments((prev) => {
       const remaining = prev.filter((d) => d.id !== id);
       if (activeDocId === id) {
@@ -331,56 +525,93 @@ export default function App() {
     });
   };
 
-  // Close all tabs
-  const handleCloseAllDocs = () => {
-    setDocuments([]);
-    setActiveDocId(null);
-  };
+  const handleCloseDoc = (id: string) => {
+    const docToClose = documents.find((d) => d.id === id);
+    if (!docToClose) return;
 
-  // Heading click inside TOC
-  const handleSelectHeading = (id: string) => {
-    setActiveHeadingId(id);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (docToClose.isModified) {
+      setUnsavedModal({
+        isOpen: true,
+        docId: docToClose.id,
+        docName: docToClose.name,
+        pendingAction: () => performCloseDoc(id),
+      });
+    } else {
+      performCloseDoc(id);
     }
   };
 
-  // Copy Heading anchor link
+  // Close all tabs
+  const handleCloseAllDocs = () => {
+    const unsavedDoc = documents.find((d) => d.isModified);
+    if (unsavedDoc) {
+      setUnsavedModal({
+        isOpen: true,
+        docId: unsavedDoc.id,
+        docName: unsavedDoc.name,
+        pendingAction: () => {
+          setDocuments([]);
+          setActiveDocId(null);
+        },
+      });
+    } else {
+      setDocuments([]);
+      setActiveDocId(null);
+    }
+  };
+
+  // Heading selection in TOC
+  const handleSelectHeading = (id: string) => {
+    setActiveHeadingId(id);
+    // If we're in edit mode, switch to split or rendered so heading can be viewed
+    if (viewMode === 'edit') {
+      setViewMode('split');
+    }
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  };
+
   const handleCopyAnchor = (anchor: string) => {
     const fullUrl = `${window.location.origin}${window.location.pathname}${anchor}`;
     navigator.clipboard.writeText(fullUrl);
     showToast(`Sidreni link ${anchor} kopiran u privremenu memoriju!`);
   };
 
-  // Copy raw Markdown
   const handleCopyMarkdown = () => {
     if (!activeDocument) return;
     navigator.clipboard.writeText(activeDocument.content);
-    showToast('Izvorni Markdown tekst je kopiran!');
+    showToast('Izvorni Markdown tekst kopiran u clipboard!');
   };
 
-  // Download Markdown file
-  const handleDownloadMarkdown = () => {
+  // Export DOCX
+  const handleExportDocx = async () => {
     if (!activeDocument) return;
-    const blob = new Blob([activeDocument.content], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = activeDocument.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`Fajl "${activeDocument.name}" je spreman za preuzimanje.`);
+    try {
+      await exportToDocx(activeDocument.content, activeDocument.name);
+      showToast(`Dokument "${activeDocument.name}" uspešno izvezen u DOCX!`);
+    } catch (err) {
+      console.error(err);
+      showToast('Greška pri izvozu u DOCX dokument.', 'error');
+    }
   };
 
-  // Print / Save as PDF
-  const handlePrint = () => {
-    window.print();
+  // Export TXT
+  const handleExportTxt = () => {
+    if (!activeDocument) return;
+    try {
+      exportToTxt(activeDocument.content, activeDocument.name);
+      showToast(`Dokument uspešno izvezen kao TXT bez formatiranja!`);
+    } catch (err) {
+      console.error(err);
+      showToast('Greška pri izvozu u TXT.', 'error');
+    }
   };
 
-  // Fullscreen toggle
+  // Fullscreen
   const handleToggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -401,20 +632,31 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Global keyboard shortcuts (Ctrl+O, Ctrl+F, Ctrl+P, Esc)
+  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+S, Ctrl+O, Ctrl+F, Ctrl+H, Ctrl+P, Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
-      if (isCmdOrCtrl && e.key.toLowerCase() === 'o') {
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'n') {
         e.preventDefault();
-        fileInputRef.current?.click();
+        handleRequestNewFile();
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (activeDocument) {
+          handleSave();
+        }
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        handleRequestOpenFile();
       } else if (isCmdOrCtrl && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        setSearchState((prev) => ({ ...prev, isOpen: true }));
+        setSearchState((prev) => ({ ...prev, isOpen: true, isReplaceOpen: false }));
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        setSearchState((prev) => ({ ...prev, isOpen: true, isReplaceOpen: true }));
       } else if (isCmdOrCtrl && e.key.toLowerCase() === 'p') {
         e.preventDefault();
-        handlePrint();
+        window.print();
       } else if (e.key === 'Escape') {
         if (searchState.isOpen) {
           setSearchState((prev) => ({ ...prev, isOpen: false }));
@@ -424,9 +666,9 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchState.isOpen]);
+  }, [activeDocument, searchState.isOpen]);
 
-  // Search matches navigation
+  // Search Navigation
   const handleNextMatch = () => {
     setSearchState((prev) => {
       if (prev.totalMatches <= 1) return prev;
@@ -441,6 +683,25 @@ export default function App() {
       const prevIndex = (prev.currentIndex - 1 + prev.totalMatches) % prev.totalMatches;
       return { ...prev, currentIndex: prevIndex };
     });
+  };
+
+  // Replace Current Match
+  const handleReplaceCurrent = () => {
+    if (!editorRef.current || !searchState.replaceText) return;
+    editorRef.current.replaceSelection(searchState.replaceText);
+    showToast('Izvršena zamena!');
+  };
+
+  // Replace All Matches
+  const handleReplaceAll = () => {
+    if (!editorRef.current || !searchState.query) return;
+    const count = editorRef.current.replaceAll(
+      searchState.query,
+      searchState.replaceText,
+      searchState.matchCase,
+      searchState.wholeWord
+    );
+    showToast(`Zamenjeno ${count} pojavljivanja teksta.`);
   };
 
   return (
@@ -463,23 +724,36 @@ export default function App() {
 
       {/* Top Header Toolbar */}
       <HeaderToolbar
-        onOpenFile={() => fileInputRef.current?.click()}
+        onNewFile={handleRequestNewFile}
+        onOpenFile={handleRequestOpenFile}
         onOpenUrl={() => setIsUrlModalOpen(true)}
         onOpenSample={handleOpenSample}
+        onSave={() => handleSave()}
+        onSaveAs={handleSaveAs}
+        isModified={activeDocument?.isModified ?? false}
         viewMode={viewMode}
         onChangeViewMode={setViewMode}
         isTocOpen={isTocOpen}
         onToggleToc={() => setIsTocOpen(!isTocOpen)}
-        onOpenSearch={() => setSearchState((prev) => ({ ...prev, isOpen: true }))}
+        onOpenSearch={() => setSearchState((prev) => ({ ...prev, isOpen: true, isReplaceOpen: false }))}
+        onOpenReplace={() => setSearchState((prev) => ({ ...prev, isOpen: true, isReplaceOpen: true }))}
+        onUndo={() => editorRef.current?.undo()}
+        onRedo={() => editorRef.current?.redo()}
+        canUndo={editorRef.current?.canUndo ?? false}
+        canRedo={editorRef.current?.canRedo ?? false}
         onOpenSettings={() => setIsSettingsOpen(true)}
         settings={settings}
         onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
         onCopyMarkdown={handleCopyMarkdown}
-        onPrint={handlePrint}
-        onDownloadMarkdown={handleDownloadMarkdown}
+        onExportDocx={handleExportDocx}
+        onExportTxt={handleExportTxt}
+        onPrint={() => window.print()}
+        onDownloadMarkdown={() => activeDocument && downloadMarkdown(activeDocument.content, activeDocument.name)}
         hasDocument={!!activeDocument}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
+        documentTitle={activeDocument?.name || 'Untitled.md'}
+        onRenameDocument={handleRenameDocument}
       />
 
       {/* Tab Bar for open documents */}
@@ -489,18 +763,26 @@ export default function App() {
         onSelectDoc={setActiveDocId}
         onCloseDoc={handleCloseDoc}
         onCloseAll={handleCloseAllDocs}
-        onNewFile={() => fileInputRef.current?.click()}
+        onNewFile={handleRequestNewFile}
+        onRenameDoc={(id, name) => {
+          setDocuments((prev) =>
+            prev.map((d) => (d.id === id ? { ...d, name } : d))
+          );
+        }}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Search Overlay floating bar */}
+        {/* Search & Replace Overlay */}
         <SearchOverlay
           searchState={searchState}
           onUpdateSearch={(upd) => setSearchState((prev) => ({ ...prev, ...upd }))}
           onNextMatch={handleNextMatch}
           onPrevMatch={handlePrevMatch}
+          onReplaceCurrent={handleReplaceCurrent}
+          onReplaceAll={handleReplaceAll}
           onClose={() => setSearchState((prev) => ({ ...prev, isOpen: false }))}
+          isEditorActive={viewMode === 'edit' || viewMode === 'split'}
         />
 
         {activeDocument ? (
@@ -530,9 +812,11 @@ export default function App() {
                 />
               )}
 
-              {viewMode === 'source' && (
-                <SourceView
+              {viewMode === 'edit' && (
+                <EditorView
+                  ref={editorRef}
                   content={activeDocument.content}
+                  onChange={handleContentChange}
                   settings={settings}
                   onCopySuccess={() => showToast('Izvorni Markdown tekst kopiran!')}
                 />
@@ -541,6 +825,7 @@ export default function App() {
               {viewMode === 'split' && (
                 <SplitView
                   content={activeDocument.content}
+                  onChangeContent={handleContentChange}
                   settings={settings}
                   searchState={searchState}
                   onUpdateTotalMatches={(total) =>
@@ -548,6 +833,7 @@ export default function App() {
                   }
                   onImageClick={(src, alt) => setLightbox({ src, alt })}
                   onCopySuccess={() => showToast('Izvorni tekst kopiran!')}
+                  editorRef={editorRef}
                 />
               )}
             </main>
@@ -555,11 +841,12 @@ export default function App() {
         ) : (
           /* Empty State when no document is open */
           <EmptyState
-            onOpenFile={() => fileInputRef.current?.click()}
+            onNewFile={handleRequestNewFile}
+            onOpenFile={handleRequestOpenFile}
             onOpenUrl={() => setIsUrlModalOpen(true)}
             onOpenSample={handleOpenSample}
             recentDocuments={recentDocuments}
-            onOpenRecent={addDocument}
+            onOpenRecent={(doc) => addDocument(doc, 'rendered')}
             isDragging={isDragging}
           />
         )}
@@ -569,6 +856,7 @@ export default function App() {
       {activeDocument && (
         <StatusBar
           fileName={activeDocument.name}
+          isModified={activeDocument.isModified}
           stats={stats}
           viewMode={viewMode}
           activeHeading={
@@ -586,23 +874,56 @@ export default function App() {
         onResetSettings={() => setSettings(DEFAULT_SETTINGS)}
       />
 
+      {/* New Document Modal */}
+      <NewDocumentModal
+        isOpen={isNewDocModalOpen}
+        onClose={() => setIsNewDocModalOpen(false)}
+        onCreate={handleCreateDocument}
+      />
+
       {/* URL Open Modal */}
       <UrlOpenModal
         isOpen={isUrlModalOpen}
         onClose={() => setIsUrlModalOpen(false)}
         onLoadFromUrl={(url, content, name) => {
-          addDocument({
-            id: `url-${Date.now()}`,
-            name,
-            content,
-            size: new Blob([content]).size,
-            lastModified: Date.now(),
-            source: 'url',
-            url,
-          });
+          addDocument(
+            {
+              id: `url-${Date.now()}`,
+              name,
+              content,
+              initialContent: content,
+              isModified: false,
+              size: new Blob([content]).size,
+              lastModified: Date.now(),
+              source: 'url',
+              url,
+            },
+            'rendered'
+          );
           showToast(`Dokument uspešno preuzet sa URL adrese!`);
         }}
       />
+
+      {/* Unsaved Changes Confirmation Modal */}
+      {unsavedModal && (
+        <UnsavedChangesModal
+          isOpen={unsavedModal.isOpen}
+          docName={unsavedModal.docName}
+          onSave={async () => {
+            const doc = documents.find((d) => d.id === unsavedModal.docId);
+            if (doc) {
+              await handleSave(doc);
+            }
+            unsavedModal.pendingAction();
+            setUnsavedModal(null);
+          }}
+          onDiscard={() => {
+            unsavedModal.pendingAction();
+            setUnsavedModal(null);
+          }}
+          onCancel={() => setUnsavedModal(null)}
+        />
+      )}
 
       {/* Image Lightbox */}
       <ImageLightbox

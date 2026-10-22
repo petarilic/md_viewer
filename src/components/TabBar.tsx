@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DocumentItem } from '../types';
-import { FileText, X, Plus, Trash2 } from 'lucide-react';
+import { FileText, X, Plus, Trash2, Edit2, Check } from 'lucide-react';
 import { formatBytes } from '../utils/markdown';
 
 interface TabBarProps {
@@ -10,6 +10,7 @@ interface TabBarProps {
   onCloseDoc: (id: string) => void;
   onCloseAll: () => void;
   onNewFile: () => void;
+  onRenameDoc?: (id: string, newName: string) => void;
 }
 
 export const TabBar: React.FC<TabBarProps> = ({
@@ -19,30 +20,98 @@ export const TabBar: React.FC<TabBarProps> = ({
   onCloseDoc,
   onCloseAll,
   onNewFile,
+  onRenameDoc,
 }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
   if (documents.length === 0) return null;
+
+  const handleStartRename = (doc: DocumentItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(doc.id);
+    setEditingName(doc.name);
+  };
+
+  const handleFinishRename = (id: string) => {
+    if (editingName.trim() && onRenameDoc) {
+      const clean = editingName.trim();
+      onRenameDoc(id, clean.endsWith('.md') ? clean : `${clean}.md`);
+    }
+    setEditingId(null);
+  };
 
   return (
     <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-950 px-2 py-1 overflow-x-auto no-print select-none">
       <div className="flex items-center gap-1 overflow-x-auto flex-1 mr-2 scrollbar-none py-0.5">
         {documents.map((doc) => {
           const isActive = doc.id === activeDocId;
+          const isEditingThis = editingId === doc.id;
+
           return (
             <div
               key={doc.id}
               onClick={() => onSelectDoc(doc.id)}
-              className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 max-w-[220px] ${
+              className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 max-w-[240px] ${
                 isActive
                   ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-800'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900/40'
               }`}
-              title={`${doc.name} (${formatBytes(doc.size)})`}
+              title={`${doc.name} (${formatBytes(doc.size)})${doc.isModified ? ' • Nesačuvane izmene' : ''}`}
             >
-              <FileText className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-blue-500' : 'text-slate-400'}`} />
-              <span className="truncate">{doc.name}</span>
-              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline-block">
-                {formatBytes(doc.size)}
-              </span>
+              <FileText
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  doc.isModified
+                    ? 'text-amber-500'
+                    : isActive
+                    ? 'text-blue-500'
+                    : 'text-slate-400'
+                }`}
+              />
+
+              {isEditingThis ? (
+                <div
+                  className="flex items-center gap-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onBlur={() => handleFinishRename(doc.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleFinishRename(doc.id);
+                      if (e.key === 'Escape') setEditingId(null);
+                    }}
+                    autoFocus
+                    className="w-24 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-xs outline-none text-slate-900 dark:text-slate-100 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleFinishRename(doc.id)}
+                    className="p-0.5 hover:text-emerald-500"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <span
+                  onDoubleClick={(e) => handleStartRename(doc, e)}
+                  className="truncate"
+                >
+                  {doc.name}
+                </span>
+              )}
+
+              {/* Modified indicator bullet dot according to Section 4.4 */}
+              {doc.isModified && (
+                <span
+                  className="text-amber-500 font-extrabold text-sm leading-none shrink-0"
+                  title="Dokument ima nesačuvane izmene"
+                >
+                  •
+                </span>
+              )}
 
               <button
                 type="button"
@@ -62,7 +131,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         <button
           onClick={onNewFile}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900/50 transition shrink-0"
-          title="Otvori novi dokument"
+          title="Kreiraj novi dokument (Ctrl+N)"
         >
           <Plus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Novi fajl</span>
