@@ -319,9 +319,9 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
     return (
       <div className="w-full h-full flex flex-col bg-slate-900 text-slate-100 font-mono">
         {/* Formatting Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-2 border-b border-slate-800 bg-slate-950/70 text-slate-300 text-xs select-none no-print">
+        <div className="flex items-center justify-between gap-1 px-2 sm:px-3 py-1.5 border-b border-slate-800 bg-slate-950/70 text-slate-300 text-xs select-none no-print overflow-x-auto">
           {/* Markdown Format Buttons */}
-          <div className="flex items-center gap-0.5 overflow-x-auto">
+          <div className="flex items-center gap-0.5 overflow-x-auto shrink-0 scrollbar-none py-0.5">
             <button
               type="button"
               onClick={() => insertFormatting('**', '**', 'podebljan tekst')}

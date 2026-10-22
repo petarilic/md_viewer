@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --bg-main: #f8fafc;
@@ -7,14 +9,21 @@
     --text-main: #0f172a;
     --text-muted: #64748b;
     --border-main: #e2e8f0;
+    color-scheme: light;
   }
 
-  .dark {
+  .dark, html.dark {
     --bg-main: #090d16;
     --bg-surface: #0f172a;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border-main: #1e293b;
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
   }
 
   body {

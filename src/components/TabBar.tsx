@@ -52,7 +52,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             <div
               key={doc.id}
               onClick={() => onSelectDoc(doc.id)}
-              className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 max-w-[240px] ${
+              className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 max-w-[170px] sm:max-w-[240px] ${
                 isActive
                   ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-800'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900/40'
@@ -84,7 +84,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                       if (e.key === 'Escape') setEditingId(null);
                     }}
                     autoFocus
-                    className="w-24 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-xs outline-none text-slate-900 dark:text-slate-100 font-mono"
+                    className="w-20 sm:w-24 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-xs outline-none text-slate-900 dark:text-slate-100 font-mono"
                   />
                   <button
                     type="button"
@@ -119,7 +119,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                   e.stopPropagation();
                   onCloseDoc(doc.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 transition ml-1"
+                className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 transition ml-0.5 sm:ml-1"
                 title="Zatvori dokument"
               >
                 <X className="w-3 h-3" />

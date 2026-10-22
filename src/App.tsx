@@ -73,8 +73,12 @@ export default function App() {
 
     if (isDark) {
       root.classList.add('dark');
+      document.body.classList.add('dark');
+      root.style.colorScheme = 'dark';
     } else {
       root.classList.remove('dark');
+      document.body.classList.remove('dark');
+      root.style.colorScheme = 'light';
     }
 
     try {
@@ -83,6 +87,26 @@ export default function App() {
       // ignore
     }
   }, [settings]);
+
+  // System theme changes listener
+  useEffect(() => {
+    if (settings.theme !== 'system') return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateTheme = () => {
+      const root = document.documentElement;
+      if (media.matches) {
+        root.classList.add('dark');
+        document.body.classList.add('dark');
+        root.style.colorScheme = 'dark';
+      } else {
+        root.classList.remove('dark');
+        document.body.classList.remove('dark');
+        root.style.colorScheme = 'light';
+      }
+    };
+    media.addEventListener('change', updateTheme);
+    return () => media.removeEventListener('change', updateTheme);
+  }, [settings.theme]);
 
   // Documents state
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
