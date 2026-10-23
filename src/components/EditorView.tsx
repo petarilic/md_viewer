@@ -22,7 +22,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { ViewerSettings } from '../types';
+import { ViewerSettings, SearchState } from '../types';
 
 export interface EditorViewRef {
   focus: () => void;
@@ -33,6 +33,9 @@ export interface EditorViewRef {
   replaceSelection: (newText: string) => void;
   replaceAll: (findText: string, replaceText: string, matchCase: boolean, wholeWord: boolean) => number;
   selectMatch: (start: number, length: number) => void;
+  getTextarea: () => HTMLTextAreaElement | null;
+  getScrollTop: () => number;
+  setScrollTop: (top: number) => void;
 }
 
 interface EditorViewProps {
@@ -40,10 +43,13 @@ interface EditorViewProps {
   onChange: (newContent: string) => void;
   settings: ViewerSettings;
   onCopySuccess: () => void;
+  onScroll?: (e: React.UIEvent<HTMLTextAreaElement>) => void;
+  searchState?: SearchState;
+  onUpdateTotalMatches?: (total: number) => void;
 }
 
 export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
-  ({ content, onChange, settings, onCopySuccess }, ref) => {
+  ({ content, onChange, settings, onCopySuccess, onScroll, searchState, onUpdateTotalMatches }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const lineNumbersRef = useRef<HTMLDivElement>(null);
     const [wordWrap, setWordWrap] = useState(settings.wordWrap ?? true);
@@ -69,6 +75,59 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
         historyIndexRef.current = newHist.length - 1;
       }
     }, [content]);
+
+    // Synchronize search matches and navigate/select current match in Editor
+    useEffect(() => {
+      if (!searchState?.isOpen) return;
+
+      if (!searchState.query) {
+        onUpdateTotalMatches?.(0);
+        return;
+      }
+
+      const flags = searchState.matchCase ? 'g' : 'gi';
+      const escaped = searchState.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = searchState.wholeWord ? `\\b${escaped}\\b` : escaped;
+      let regex: RegExp;
+      try {
+        regex = new RegExp(pattern, flags);
+      } catch {
+        return;
+      }
+
+      const matches: { index: number; length: number }[] = [];
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(content)) !== null) {
+        matches.push({ index: m.index, length: m[0].length });
+        if (m.index === regex.lastIndex) regex.lastIndex++;
+      }
+
+      if (onUpdateTotalMatches) {
+        onUpdateTotalMatches(matches.length);
+      }
+
+      if (matches.length > 0 && textareaRef.current) {
+        const targetIdx = Math.max(0, Math.min(searchState.currentIndex, matches.length - 1));
+        const target = matches[targetIdx];
+        const textarea = textareaRef.current;
+        textarea.focus();
+        textarea.setSelectionRange(target.index, target.index + target.length);
+
+        // Smoothly scroll textarea to match line
+        const beforeText = content.substring(0, target.index);
+        const line = beforeText.split('\n').length;
+        const lineHeight = 24;
+        textarea.scrollTop = Math.max(0, (line - 4) * lineHeight);
+      }
+    }, [
+      searchState?.isOpen,
+      searchState?.query,
+      searchState?.currentIndex,
+      searchState?.matchCase,
+      searchState?.wholeWord,
+      content,
+      onUpdateTotalMatches,
+    ]);
 
     const handleUndo = () => {
       if (historyIndexRef.current > 0) {
@@ -134,6 +193,16 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
         const line = textarea.value.substring(0, start).split('\n').length;
         const lineHeight = 24;
         textarea.scrollTop = Math.max(0, (line - 5) * lineHeight);
+      },
+      getTextarea: () => textareaRef.current,
+      getScrollTop: () => textareaRef.current?.scrollTop ?? 0,
+      setScrollTop: (top: number) => {
+        if (textareaRef.current) {
+          textareaRef.current.scrollTop = top;
+        }
+        if (lineNumbersRef.current) {
+          lineNumbersRef.current.scrollTop = top;
+        }
       },
     }));
 
@@ -292,11 +361,12 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
       }
     };
 
-    // Synchronize scrolling between textarea and line numbers
-    const handleScroll = () => {
+    // Synchronize scrolling between textarea and line numbers, and notify parent
+    const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
       if (textareaRef.current && lineNumbersRef.current) {
         lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
       }
+      onScroll?.(e);
     };
 
     const handleCopyAll = () => {

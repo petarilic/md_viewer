@@ -48,19 +48,26 @@ export const UrlOpenModal: React.FC<UrlOpenModalProps> = ({
     setIsLoading(true);
     setError(null);
 
+    let fetchUrl = trimmed;
+    // Auto-convert standard GitHub blob URLs to raw.githubusercontent.com for seamless CORS fetching
+    const githubBlobMatch = fetchUrl.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/i);
+    if (githubBlobMatch) {
+      fetchUrl = `https://raw.githubusercontent.com/${githubBlobMatch[1]}/${githubBlobMatch[2]}/${githubBlobMatch[3]}/${githubBlobMatch[4]}`;
+    }
+
     try {
-      const response = await fetch(trimmed);
+      const response = await fetch(fetchUrl);
       if (!response.ok) {
         throw new Error(`Učitavanje nije uspelo (HTTP status: ${response.status})`);
       }
 
       const content = await response.text();
       // Extract file name from URL or fallback
-      const urlObj = new URL(trimmed);
+      const urlObj = new URL(fetchUrl);
       const pathname = urlObj.pathname;
       const fileName = pathname.split('/').pop() || 'Dokument.md';
 
-      onLoadFromUrl(trimmed, content, fileName);
+      onLoadFromUrl(fetchUrl, content, fileName);
       onClose();
     } catch (err: unknown) {
       const msg =

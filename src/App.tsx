@@ -20,6 +20,7 @@ import {
   openFileWithPicker,
 } from './utils/fileSystem';
 import { SHOWCASE_MD, QUICKSTART_MD } from './data/samples';
+import { DOCUMENT_TEMPLATES } from './data/templates';
 import { HeaderToolbar } from './components/HeaderToolbar';
 import { TabBar } from './components/TabBar';
 import { TOCSidebar } from './components/TOCSidebar';
@@ -35,6 +36,8 @@ import { UnsavedChangesModal } from './components/UnsavedChangesModal';
 import { EmptyState } from './components/EmptyState';
 import { ImageLightbox } from './components/ImageLightbox';
 import { Toast, ToastMessage } from './components/Toast';
+import { ScrollToTopButton } from './components/ScrollToTopButton';
+import { PdfExportModal } from './components/PdfExportModal';
 
 const DEFAULT_SETTINGS: ViewerSettings = {
   theme: 'system',
@@ -130,6 +133,8 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
+  const [newDocInitialTemplate, setNewDocInitialTemplate] = useState<string>('empty');
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   // Unsaved changes confirmation modal state
   const [unsavedModal, setUnsavedModal] = useState<{
@@ -160,6 +165,66 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<EditorViewRef>(null);
+  const renderedScrollRef = useRef<HTMLDivElement>(null);
+  const splitPreviewScrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Check scroll position across active view modes (rendered, edit, split)
+  const handleCheckScroll = useCallback(() => {
+    const SCROLL_THRESHOLD = 180;
+    let isScrolled = false;
+
+    if (viewMode === 'rendered') {
+      if (renderedScrollRef.current && renderedScrollRef.current.scrollTop > SCROLL_THRESHOLD) {
+        isScrolled = true;
+      }
+    } else if (viewMode === 'edit') {
+      const textarea = editorRef.current?.getTextarea();
+      if (textarea && textarea.scrollTop > SCROLL_THRESHOLD) {
+        isScrolled = true;
+      }
+    } else if (viewMode === 'split') {
+      const textarea = editorRef.current?.getTextarea();
+      const preview = splitPreviewScrollRef.current;
+      if (
+        (textarea && textarea.scrollTop > SCROLL_THRESHOLD) ||
+        (preview && preview.scrollTop > SCROLL_THRESHOLD)
+      ) {
+        isScrolled = true;
+      }
+    }
+
+    setShowScrollTop(isScrolled);
+  }, [viewMode]);
+
+  // Smooth scroll active document views back to top
+  const handleScrollToTop = useCallback(() => {
+    const smoothScroll = (el: HTMLElement | null | undefined) => {
+      if (!el) return;
+      try {
+        el.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch {
+        el.scrollTop = 0;
+      }
+    };
+
+    if (viewMode === 'rendered') {
+      smoothScroll(renderedScrollRef.current);
+    } else if (viewMode === 'edit') {
+      smoothScroll(editorRef.current?.getTextarea());
+    } else if (viewMode === 'split') {
+      smoothScroll(editorRef.current?.getTextarea());
+      smoothScroll(splitPreviewScrollRef.current);
+    }
+  }, [viewMode]);
+
+  // Synchronize scroll button visibility when active document or view mode changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleCheckScroll();
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [activeDocId, viewMode, handleCheckScroll]);
 
   // Memoized search total matches updater to avoid re-renders
   const handleUpdateTotalMatches = useCallback((total: number) => {
@@ -335,13 +400,8 @@ export default function App() {
     [addDocument, showToast]
   );
 
-  // Initial load
-  useEffect(() => {
-    if (documents.length === 0) {
-      handleOpenSample('spec');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Note: On initial startup, no document is opened automatically per user preference,
+  // allowing immediate selection of an empty document or template from the landing screen.
 
   // Update document content when edited
   const handleContentChange = (newContent: string) => {
@@ -429,7 +489,9 @@ export default function App() {
   };
 
   // New Document creation
-  const handleRequestNewFile = () => {
+  const handleRequestNewFile = (initialTemplate?: unknown) => {
+    const templateId = typeof initialTemplate === 'string' && initialTemplate.trim().length > 0 ? initialTemplate : 'empty';
+    setNewDocInitialTemplate(templateId);
     if (activeDocument && activeDocument.isModified) {
       setUnsavedModal({
         isOpen: true,
@@ -439,6 +501,30 @@ export default function App() {
       });
     } else {
       setIsNewDocModalOpen(true);
+    }
+  };
+
+  // Quick Scaffold directly from Template
+  const handleQuickSelectTemplate = (templateId: string) => {
+    const tmpl = DOCUMENT_TEMPLATES.find((t) => t.id === templateId);
+    if (!tmpl) {
+      handleRequestNewFile(templateId);
+      return;
+    }
+
+    const createIt = () => {
+      handleCreateDocument(tmpl.defaultFilename, tmpl.content);
+    };
+
+    if (activeDocument && activeDocument.isModified) {
+      setUnsavedModal({
+        isOpen: true,
+        docId: activeDocument.id,
+        docName: activeDocument.name,
+        pendingAction: createIt,
+      });
+    } else {
+      createIt();
     }
   };
 
@@ -603,16 +689,19 @@ export default function App() {
   // Heading selection in TOC
   const handleSelectHeading = (id: string) => {
     setActiveHeadingId(id);
-    // If we're in edit mode, switch to split or rendered so heading can be viewed
+    // If we're in edit mode, switch to split so heading can be viewed
     if (viewMode === 'edit') {
       setViewMode('split');
     }
-    setTimeout(() => {
+    const tryScroll = (attempts = 5) => {
       const element = document.getElementById(id);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (attempts > 0) {
+        setTimeout(() => tryScroll(attempts - 1), 60);
       }
-    }, 50);
+    };
+    setTimeout(() => tryScroll(5), 50);
   };
 
   const handleCopyAnchor = (anchor: string) => {
@@ -650,6 +739,15 @@ export default function App() {
       showToast('Greška pri izvozu u TXT.', 'error');
     }
   };
+
+  // Export / Save as PDF modal
+  const handleOpenPdfExport = useCallback(() => {
+    if (!activeDocument) {
+      showToast('Nema otvorenog dokumenta za izvoz u PDF.', 'error');
+      return;
+    }
+    setIsPdfModalOpen(true);
+  }, [activeDocument, showToast]);
 
   // Fullscreen
   const handleToggleFullscreen = () => {
@@ -696,7 +794,7 @@ export default function App() {
         setSearchState((prev) => ({ ...prev, isOpen: true, isReplaceOpen: true }));
       } else if (isCmdOrCtrl && e.key.toLowerCase() === 'p') {
         e.preventDefault();
-        window.print();
+        handleOpenPdfExport();
       } else if (e.key === 'Escape') {
         if (searchState.isOpen) {
           setSearchState((prev) => ({ ...prev, isOpen: false }));
@@ -706,7 +804,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDocument, searchState.isOpen]);
+  }, [activeDocument, searchState.isOpen, handleOpenPdfExport]);
 
   // Search Navigation
   const handleNextMatch = () => {
@@ -764,9 +862,10 @@ export default function App() {
 
       {/* Top Header Toolbar */}
       <HeaderToolbar
-        onNewFile={handleRequestNewFile}
+        onNewFile={() => handleRequestNewFile('empty')}
         onOpenFile={handleRequestOpenFile}
         onOpenUrl={() => setIsUrlModalOpen(true)}
+        onSelectTemplate={handleQuickSelectTemplate}
         onOpenSample={handleOpenSample}
         onSave={() => handleSave()}
         onSaveAs={handleSaveAs}
@@ -787,7 +886,7 @@ export default function App() {
         onCopyMarkdown={handleCopyMarkdown}
         onExportDocx={handleExportDocx}
         onExportTxt={handleExportTxt}
-        onPrint={() => window.print()}
+        onPrint={handleOpenPdfExport}
         onDownloadMarkdown={() => activeDocument && downloadMarkdown(activeDocument.content, activeDocument.name)}
         hasDocument={!!activeDocument}
         isFullscreen={isFullscreen}
@@ -803,7 +902,7 @@ export default function App() {
         onSelectDoc={setActiveDocId}
         onCloseDoc={handleCloseDoc}
         onCloseAll={handleCloseAllDocs}
-        onNewFile={handleRequestNewFile}
+        onNewFile={() => handleRequestNewFile('empty')}
         onRenameDoc={(id, name) => {
           setDocuments((prev) =>
             prev.map((d) => (d.id === id ? { ...d, name } : d))
@@ -841,6 +940,8 @@ export default function App() {
             <main className="flex-1 h-full overflow-hidden flex flex-col relative bg-white dark:bg-slate-900/40">
               {viewMode === 'rendered' && (
                 <RenderedView
+                  scrollContainerRef={renderedScrollRef}
+                  onScroll={handleCheckScroll}
                   content={activeDocument.content}
                   settings={settings}
                   searchState={searchState}
@@ -857,6 +958,9 @@ export default function App() {
                   onChange={handleContentChange}
                   settings={settings}
                   onCopySuccess={() => showToast('Izvorni Markdown tekst kopiran!')}
+                  onScroll={handleCheckScroll}
+                  searchState={searchState}
+                  onUpdateTotalMatches={handleUpdateTotalMatches}
                 />
               )}
 
@@ -870,16 +974,26 @@ export default function App() {
                   onImageClick={handleImageClick}
                   onCopySuccess={() => showToast('Izvorni tekst kopiran!')}
                   editorRef={editorRef}
+                  previewScrollRef={splitPreviewScrollRef}
+                  onScroll={handleCheckScroll}
+                  onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
                 />
               )}
+
+              {/* Scroll to Top Floating Button */}
+              <ScrollToTopButton
+                visible={showScrollTop}
+                onClick={handleScrollToTop}
+              />
             </main>
           </>
         ) : (
           /* Empty State when no document is open */
           <EmptyState
-            onNewFile={handleRequestNewFile}
+            onNewFile={() => handleRequestNewFile('empty')}
             onOpenFile={handleRequestOpenFile}
             onOpenUrl={() => setIsUrlModalOpen(true)}
+            onSelectTemplate={handleQuickSelectTemplate}
             onOpenSample={handleOpenSample}
             recentDocuments={recentDocuments}
             onOpenRecent={(doc) => addDocument(doc, 'rendered')}
@@ -910,11 +1024,12 @@ export default function App() {
         onResetSettings={() => setSettings(DEFAULT_SETTINGS)}
       />
 
-      {/* New Document Modal */}
+      {/* New Document Modal with Templates */}
       <NewDocumentModal
         isOpen={isNewDocModalOpen}
         onClose={() => setIsNewDocModalOpen(false)}
         onCreate={handleCreateDocument}
+        initialTemplateId={newDocInitialTemplate}
       />
 
       {/* URL Open Modal */}
@@ -958,6 +1073,25 @@ export default function App() {
             setUnsavedModal(null);
           }}
           onCancel={() => setUnsavedModal(null)}
+        />
+      )}
+
+      {/* Save as PDF Modal */}
+      {activeDocument && (
+        <PdfExportModal
+          isOpen={isPdfModalOpen}
+          onClose={() => setIsPdfModalOpen(false)}
+          defaultFilename={activeDocument.name}
+          markdown={activeDocument.content}
+          documentTitle={activeDocument.name}
+          onSuccess={(savedName, method) => {
+            if (method === 'picker') {
+              showToast(`Dokument uspešno sačuvan kao "${savedName}"!`);
+            } else {
+              showToast(`Dokument preuzet kao "${savedName}".`);
+            }
+          }}
+          onError={(msg) => showToast(msg, 'error')}
         />
       )}
 

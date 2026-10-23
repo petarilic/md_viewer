@@ -60,12 +60,28 @@ export interface DocumentStats {
   fileSizeBytes: number;
 }
 
-export type TemplateId = 'empty' | 'readme' | 'spec' | 'meeting' | 'docs';
+export type TemplateId =
+  | 'empty'
+  | 'api-docs'
+  | 'changelog'
+  | 'license'
+  | 'readme'
+  | 'spec'
+  | 'meeting'
+  | 'docs'
+  | 'contributing'
+  | 'bug-report'
+  | string;
+
+export type TemplateCategory = 'all' | 'popular' | 'development' | 'documentation' | 'legal';
 
 export interface DocumentTemplate {
-  id: TemplateId;
+  id: string;
   name: string;
   description: string;
+  category: TemplateCategory;
+  badge?: string;
+  iconName?: 'FileCode' | 'History' | 'Scale' | 'BookOpen' | 'Layers' | 'FileText' | 'GitPullRequest' | 'Bug' | 'Sparkles' | 'Terminal';
   defaultFilename: string;
   content: string;
 }

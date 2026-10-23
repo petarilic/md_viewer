@@ -129,7 +129,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         })}
 
         <button
-          onClick={onNewFile}
+          onClick={() => onNewFile()}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900/50 transition shrink-0"
           title="Kreiraj novi dokument (Ctrl+N)"
         >

@@ -9,6 +9,8 @@ interface RenderedViewProps {
   onUpdateTotalMatches: (total: number) => void;
   onImageClick: (src: string, alt: string) => void;
   onHeadingVisible?: (headingId: string) => void;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
 export const RenderedView: React.FC<RenderedViewProps> = ({
@@ -18,7 +20,11 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
   onUpdateTotalMatches,
   onImageClick,
   onHeadingVisible,
+  scrollContainerRef,
+  onScroll,
 }) => {
+  const localContainerRef = useRef<HTMLDivElement>(null);
+  const outerScrollRef = scrollContainerRef || localContainerRef;
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Generate clean rendered HTML
@@ -265,7 +271,11 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto px-4 sm:px-8 py-8 transition-colors">
+    <div
+      ref={outerScrollRef}
+      onScroll={onScroll}
+      className="w-full h-full overflow-y-auto px-4 sm:px-8 py-8 transition-colors"
+    >
       <div
         className={`mx-auto ${widthClasses[settings.contentWidth]} ${fontSizeClasses[settings.fontSize]} ${fontFamilyClasses[settings.fontFamily]} ${lineSpacingClasses[settings.lineSpacing]} print-container`}
       >

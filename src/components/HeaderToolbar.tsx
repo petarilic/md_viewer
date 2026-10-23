@@ -29,6 +29,10 @@ import {
   Globe,
   MoreVertical,
   Replace,
+  LayoutGrid,
+  Terminal,
+  History,
+  Scale,
 } from 'lucide-react';
 import { ViewMode, Theme, ViewerSettings } from '../types';
 
@@ -36,6 +40,7 @@ interface HeaderToolbarProps {
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenUrl: () => void;
+  onSelectTemplate?: (templateId: string) => void;
   onOpenSample: (sampleKey: 'spec' | 'showcase' | 'quickstart') => void;
   onSave: () => void;
   onSaveAs: () => void;
@@ -69,6 +74,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onNewFile,
   onOpenFile,
   onOpenUrl,
+  onSelectTemplate,
   onOpenSample,
   onSave,
   onSaveAs,
@@ -99,10 +105,12 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 }) => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const sampleMenuRef = useRef<HTMLDivElement>(null);
+  const templateMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -112,6 +120,9 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
       }
       if (sampleMenuRef.current && !sampleMenuRef.current.contains(e.target as Node)) {
         setIsSampleMenuOpen(false);
+      }
+      if (templateMenuRef.current && !templateMenuRef.current.contains(e.target as Node)) {
+        setIsTemplateMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -133,7 +144,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
   return (
     <>
-      <header className="toolbar h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur-md px-2.5 sm:px-4 flex items-center justify-between z-30 select-none no-print">
+      <header className="toolbar relative z-40 h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur-md px-2.5 sm:px-4 flex items-center justify-between select-none no-print">
         {/* Left side: Logo, TOC toggle, Desktop File Operations */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Toggle TOC button */}
@@ -167,13 +178,102 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
           {/* Desktop File Actions: New, Open, Save, Save As */}
           <div className="hidden md:flex items-center gap-1 ml-1">
             <button
-              onClick={onNewFile}
+              onClick={() => onNewFile()}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
               title="Kreiraj novi Markdown dokument (Ctrl+N)"
             >
               <FilePlus className="w-3.5 h-3.5 text-blue-500" />
               <span>Novi</span>
             </button>
+
+            {/* Desktop Templates Dropdown */}
+            <div className={`relative ${isTemplateMenuOpen ? 'z-50' : ''}`} ref={templateMenuRef}>
+              <button
+                onClick={() => setIsTemplateMenuOpen(!isTemplateMenuOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+                title="Brzi izbor gotovih Markdown šablona (API, Changelog, Licenca, README)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Šabloni</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isTemplateMenuOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-72 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Popularni Markdown Šabloni
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsTemplateMenuOpen(false);
+                      onSelectTemplate?.('api-docs');
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    <Terminal className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">API Dokumentacija</div>
+                      <div className="text-[10px] text-slate-400">Endpoint-i, parametri, JSON tela i statusi</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsTemplateMenuOpen(false);
+                      onSelectTemplate?.('changelog');
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    <History className="w-4 h-4 text-blue-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">Dnevnik Izmena (Changelog)</div>
+                      <div className="text-[10px] text-slate-400">Keep a Changelog & SemVer standard</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsTemplateMenuOpen(false);
+                      onSelectTemplate?.('license');
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    <Scale className="w-4 h-4 text-purple-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">Softverska Licenca (MIT)</div>
+                      <div className="text-[10px] text-slate-400">Pravna prava, uslovi i odricanje garancije</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsTemplateMenuOpen(false);
+                      onSelectTemplate?.('readme');
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">README Projekta</div>
+                      <div className="text-[10px] text-slate-400">Bedževi, opis, instalacija i tehnologije</div>
+                    </div>
+                  </button>
+
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  <button
+                    onClick={() => {
+                      setIsTemplateMenuOpen(false);
+                      onNewFile();
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/50 flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Pregledaj sve šablone i prilagodi...</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={onOpenFile}
@@ -213,7 +313,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
             )}
 
             {/* Desktop Sample docs dropdown */}
-            <div className="relative" ref={sampleMenuRef}>
+            <div className={`relative ${isSampleMenuOpen ? 'z-50' : ''}`} ref={sampleMenuRef}>
               <button
                 onClick={() => setIsSampleMenuOpen(!isSampleMenuOpen)}
                 className="flex items-center gap-1 px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
@@ -225,7 +325,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
               </button>
 
               {isSampleMenuOpen && (
-                <div className="absolute left-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1.5 z-50 text-xs animate-in fade-in slide-in-from-top-1">
+                <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
                   <button
                     onClick={() => {
                       onOpenSample('spec');
@@ -371,7 +471,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
           {/* Export Dropdown (Desktop) */}
           {hasDocument && (
-            <div className="relative hidden md:block" ref={exportMenuRef}>
+            <div className={`relative hidden md:block ${isExportMenuOpen ? 'z-50' : ''}`} ref={exportMenuRef}>
               <button
                 onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
@@ -383,7 +483,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
               </button>
 
               {isExportMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1.5 z-50 text-xs animate-in fade-in slide-in-from-top-1">
+                <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
                   <button
                     onClick={() => {
                       onExportDocx();
@@ -419,10 +519,13 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                       onPrint();
                       setIsExportMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
                   >
-                    <Printer className="w-3.5 h-3.5 text-purple-500" />
-                    <span>Štampa / Sačuvaj kao PDF (Ctrl+P)</span>
+                    <FileType className="w-4 h-4 text-rose-500" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">Sačuvaj kao PDF (.pdf)</div>
+                      <div className="text-[10px] text-slate-400">Save As prozor za naziv i lokaciju (Ctrl+P)</div>
+                    </div>
                   </button>
 
                   <button
@@ -497,7 +600,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
       {/* Mobile Drawer Menu */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex justify-end">
+        <div className="fixed inset-0 z-[60] md:hidden flex justify-end">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
@@ -540,8 +643,73 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
                 >
                   <FilePlus className="w-4 h-4 text-blue-500" />
-                  <span>Novi dokument (sa šablonima)</span>
+                  <span>Novi dokument (svi šabloni)</span>
                 </button>
+
+                {/* Brzi šabloni za mobilne uređaje */}
+                <div className="pt-2 pb-1">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <LayoutGrid className="w-3 h-3 text-indigo-500" />
+                    <span>Popularni šabloni</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onSelectTemplate?.('api-docs');
+                      }}
+                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left border border-slate-200 dark:border-slate-800"
+                    >
+                      <div className="font-semibold text-[11px] text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <Terminal className="w-3 h-3 text-emerald-500" />
+                        <span>API Docs</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5 truncate">REST rute i JSON</div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onSelectTemplate?.('changelog');
+                      }}
+                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left border border-slate-200 dark:border-slate-800"
+                    >
+                      <div className="font-semibold text-[11px] text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <History className="w-3 h-3 text-blue-500" />
+                        <span>Changelog</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5 truncate">Dnevnik izmena</div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onSelectTemplate?.('license');
+                      }}
+                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left border border-slate-200 dark:border-slate-800"
+                    >
+                      <div className="font-semibold text-[11px] text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <Scale className="w-3 h-3 text-purple-500" />
+                        <span>Licenca</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5 truncate">MIT licenca</div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onSelectTemplate?.('readme');
+                      }}
+                      className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-left border border-slate-200 dark:border-slate-800"
+                    >
+                      <div className="font-semibold text-[11px] text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <BookOpen className="w-3 h-3 text-amber-500" />
+                        <span>README</span>
+                      </div>
+                      <div className="text-[9px] text-slate-400 mt-0.5 truncate">Projektni vodič</div>
+                    </button>
+                  </div>
+                </div>
 
                 <button
                   onClick={() => {
@@ -659,10 +827,10 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                       setIsMobileMenuOpen(false);
                       onPrint();
                     }}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left cursor-pointer"
                   >
-                    <Printer className="w-4 h-4 text-purple-500" />
-                    <span>Štampa / Sačuvaj kao PDF</span>
+                    <FileType className="w-4 h-4 text-rose-500" />
+                    <span>Sačuvaj kao PDF (.pdf) (Ctrl+P)</span>
                   </button>
                   <button
                     onClick={() => {
