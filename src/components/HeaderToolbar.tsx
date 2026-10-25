@@ -33,6 +33,7 @@ import {
   Terminal,
   History,
   Scale,
+  Info,
 } from 'lucide-react';
 import { ViewMode, Theme, ViewerSettings } from '../types';
 
@@ -56,10 +57,12 @@ interface HeaderToolbarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   onOpenSettings: () => void;
+  onOpenAbout?: () => void;
   settings: ViewerSettings;
   onUpdateSettings: (newSettings: Partial<ViewerSettings>) => void;
   onCopyMarkdown: () => void;
   onExportDocx: () => void;
+  onExportHtml: () => void;
   onExportTxt: () => void;
   onPrint: () => void;
   onDownloadMarkdown: () => void;
@@ -90,10 +93,12 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   canUndo = false,
   canRedo = false,
   onOpenSettings,
+  onOpenAbout,
   settings,
   onUpdateSettings,
   onCopyMarkdown,
   onExportDocx,
+  onExportHtml,
   onExportTxt,
   onPrint,
   onDownloadMarkdown,
@@ -500,6 +505,20 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
 
                   <button
                     onClick={() => {
+                      onExportHtml();
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
+                  >
+                    <Globe className="w-4 h-4 text-orange-500" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u HTML (.html)</div>
+                      <div className="text-[10px] text-slate-400">Samostalna web stranica sa kompletnim stilovima</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
                       onExportTxt();
                       setIsExportMenuOpen(false);
                     }}
@@ -561,6 +580,16 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
             title={isFullscreen ? 'Izađi iz celog ekrana' : 'Prikaz preko celog ekrana (F11)'}
           >
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
+
+          {/* Discrete Info / About button (Desktop) */}
+          <button
+            onClick={onOpenAbout}
+            className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+            title="O aplikaciji (About) [~]"
+            aria-label="O aplikaciji"
+          >
+            <Info className="w-4 h-4" />
           </button>
 
           {/* Settings button (Desktop) */}
@@ -815,6 +844,16 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);
+                      onExportHtml();
+                    }}
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left cursor-pointer"
+                  >
+                    <Globe className="w-4 h-4 text-orange-500" />
+                    <span>Izvoz u HTML (.html)</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
                       onExportTxt();
                     }}
                     className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
@@ -955,6 +994,22 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                 >
                   <Maximize className="w-4 h-4 text-slate-400" />
                   <span>Ceo ekran (Fullscreen)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenAbout?.();
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Info className="w-4 h-4 text-indigo-500" />
+                    <span>O aplikaciji (About)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-semibold">
+                    ~
+                  </span>
                 </button>
               </div>
             </div>

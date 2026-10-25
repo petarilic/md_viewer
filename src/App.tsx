@@ -12,7 +12,7 @@ import {
   DocumentStats,
 } from './types';
 import { extractToc, calculateDocumentStats } from './utils/markdown';
-import { exportToDocx, exportToTxt } from './utils/export';
+import { exportToDocx, exportToTxt, exportToHtml } from './utils/export';
 import {
   saveDocument,
   saveDocumentAs,
@@ -38,6 +38,7 @@ import { ImageLightbox } from './components/ImageLightbox';
 import { Toast, ToastMessage } from './components/Toast';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { PdfExportModal } from './components/PdfExportModal';
+import { AboutModal } from './components/AboutModal';
 
 const DEFAULT_SETTINGS: ViewerSettings = {
   theme: 'system',
@@ -135,6 +136,7 @@ export default function App() {
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
   const [newDocInitialTemplate, setNewDocInitialTemplate] = useState<string>('empty');
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   // Unsaved changes confirmation modal state
   const [unsavedModal, setUnsavedModal] = useState<{
@@ -728,6 +730,18 @@ export default function App() {
     }
   };
 
+  // Export HTML
+  const handleExportHtml = async () => {
+    if (!activeDocument) return;
+    try {
+      await exportToHtml(activeDocument.content, activeDocument.name, settings);
+      showToast(`Dokument "${activeDocument.name}" uspešno izvezen kao HTML!`);
+    } catch (err) {
+      console.error(err);
+      showToast('Greška pri izvozu u HTML.', 'error');
+    }
+  };
+
   // Export TXT
   const handleExportTxt = () => {
     if (!activeDocument) return;
@@ -770,10 +784,30 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+S, Ctrl+O, Ctrl+F, Ctrl+H, Ctrl+P, Esc)
+  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+S, Ctrl+O, Ctrl+F, Ctrl+H, Ctrl+P, Tilde ~, Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+      // Check if user is actively typing in an input or editor field
+      const activeEl = document.activeElement;
+      const isTyping =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true' ||
+          activeEl.closest('.cm-editor') ||
+          activeEl.closest('.cm-content') ||
+          activeEl.closest('.editor-container'));
+
+      // Tilde key '~' or Backquote to toggle About Modal (when not typing in editor/input)
+      if (!isTyping && !isCmdOrCtrl && !e.altKey) {
+        if (e.key === '~' || e.key === '`' || e.code === 'Backquote') {
+          e.preventDefault();
+          setIsAboutOpen((prev) => !prev);
+          return;
+        }
+      }
 
       if (isCmdOrCtrl && e.key.toLowerCase() === 'n') {
         e.preventDefault();
@@ -796,6 +830,10 @@ export default function App() {
         e.preventDefault();
         handleOpenPdfExport();
       } else if (e.key === 'Escape') {
+        if (isAboutOpen) {
+          setIsAboutOpen(false);
+          return;
+        }
         if (searchState.isOpen) {
           setSearchState((prev) => ({ ...prev, isOpen: false }));
         }
@@ -804,7 +842,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDocument, searchState.isOpen, handleOpenPdfExport]);
+  }, [activeDocument, searchState.isOpen, isAboutOpen, handleOpenPdfExport]);
 
   // Search Navigation
   const handleNextMatch = () => {
@@ -881,10 +919,12 @@ export default function App() {
         canUndo={editorRef.current?.canUndo ?? false}
         canRedo={editorRef.current?.canRedo ?? false}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenAbout={() => setIsAboutOpen(true)}
         settings={settings}
         onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
         onCopyMarkdown={handleCopyMarkdown}
         onExportDocx={handleExportDocx}
+        onExportHtml={handleExportHtml}
         onExportTxt={handleExportTxt}
         onPrint={handleOpenPdfExport}
         onDownloadMarkdown={() => activeDocument && downloadMarkdown(activeDocument.content, activeDocument.name)}
@@ -1012,6 +1052,7 @@ export default function App() {
           activeHeading={
             toc.find((t) => t.id === activeHeadingId)?.text || null
           }
+          onOpenAbout={() => setIsAboutOpen(true)}
         />
       )}
 
@@ -1022,6 +1063,12 @@ export default function App() {
         settings={settings}
         onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
         onResetSettings={() => setSettings(DEFAULT_SETTINGS)}
+      />
+
+      {/* About Application Modal */}
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
       />
 
       {/* New Document Modal with Templates */}

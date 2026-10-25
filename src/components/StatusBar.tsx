@@ -1,6 +1,6 @@
 import React from 'react';
 import { DocumentStats, ViewMode } from '../types';
-import { FileText, Clock, Type, ShieldCheck, Eye, Edit3, Columns, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileText, Clock, Type, ShieldCheck, Eye, Edit3, Columns, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { formatBytes } from '../utils/markdown';
 
 interface StatusBarProps {
@@ -9,6 +9,7 @@ interface StatusBarProps {
   stats: DocumentStats;
   viewMode: ViewMode;
   activeHeading: string | null;
+  onOpenAbout?: () => void;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -17,6 +18,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   stats,
   viewMode,
   activeHeading,
+  onOpenAbout,
 }) => {
   const viewModeIcons = {
     edit: <Edit3 className="w-3 h-3 text-amber-500" />,
@@ -103,6 +105,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <ShieldCheck className="w-3.5 h-3.5" />
           <span className="text-[10px]">Lokalna obrada</span>
         </div>
+
+        {onOpenAbout && (
+          <button
+            onClick={onOpenAbout}
+            className="flex items-center gap-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 px-1.5 py-0.5 rounded transition cursor-pointer"
+            title="O aplikaciji (About) [~]"
+            aria-label="O aplikaciji"
+          >
+            <Info className="w-3 h-3 text-indigo-500" />
+            <span className="text-[10px] font-mono">v1.2.0</span>
+          </button>
+        )}
       </div>
     </footer>
   );

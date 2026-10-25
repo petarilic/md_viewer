@@ -11,6 +11,8 @@ import {
   Packer,
   AlignmentType,
 } from 'docx';
+import { renderMarkdownToHtml } from './markdown';
+import { ViewerSettings } from '../types';
 
 /**
  * Converts Markdown text to clean Plain Text format according to Specification 8.2 & AC-11:
@@ -437,3 +439,364 @@ function parseInlineRuns(line: string): TextRun[] {
 
   return runs.length > 0 ? runs : [new TextRun(line)];
 }
+
+/**
+ * Exports markdown document as a self-contained, standalone HTML file
+ * with faithful styling, typography, code highlighting, tables, and copy functionality.
+ */
+export async function exportToHtml(
+  markdown: string,
+  baseFilename: string,
+  settings?: ViewerSettings
+): Promise<void> {
+  const cleanTitle = baseFilename.replace(/\.[^/.]+$/, '') || 'Dokument';
+  const filename = `${cleanTitle}.html`;
+  const renderedHtml = renderMarkdownToHtml(markdown, settings?.showLineNumbersInCode ?? true);
+
+  const fullHtml = `<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(cleanTitle)}</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --code-bg: #0f172a;
+      --code-text: #e2e8f0;
+      --quote-bg: #f8fafc;
+      --quote-border: #3b82f6;
+      --table-header: #f1f5f9;
+      --table-border: #e2e8f0;
+      --table-row-alt: #f8fafc;
+      --inline-code-bg: rgba(148, 163, 184, 0.15);
+      --inline-code-color: #db2777;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #090d16;
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --border: #1e293b;
+        --code-bg: #020617;
+        --code-text: #f8fafc;
+        --quote-bg: rgba(30, 41, 59, 0.5);
+        --quote-border: #3b82f6;
+        --table-header: #1e293b;
+        --table-border: #334155;
+        --table-row-alt: rgba(30, 41, 59, 0.3);
+        --inline-code-bg: rgba(148, 163, 184, 0.2);
+        --inline-code-color: #f472b6;
+      }
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+
+    /* Markdown Body Styling */
+    .markdown-body {
+      word-wrap: break-word;
+    }
+
+    .markdown-body h1, .markdown-body h2, .markdown-body h3,
+    .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+      color: inherit;
+      font-weight: 700;
+      margin-top: 1.8rem;
+      margin-bottom: 0.8rem;
+      line-height: 1.3;
+    }
+
+    .markdown-body h1 {
+      font-size: 2.2rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    .markdown-body h2 {
+      font-size: 1.65rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      letter-spacing: -0.02em;
+    }
+
+    .markdown-body h3 { font-size: 1.35rem; }
+    .markdown-body h4 { font-size: 1.15rem; }
+    .markdown-body h5 { font-size: 1rem; }
+    .markdown-body h6 { font-size: 0.9rem; }
+
+    .markdown-body p {
+      margin: 1rem 0;
+    }
+
+    .markdown-body a {
+      color: #2563eb;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .markdown-body a:hover {
+      color: #1d4ed8;
+    }
+
+    .markdown-body blockquote {
+      border-left: 4px solid var(--quote-border);
+      background: var(--quote-bg);
+      padding: 10px 18px;
+      margin: 1.25rem 0;
+      border-radius: 0 8px 8px 0;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .markdown-body hr {
+      height: 2px;
+      background: var(--border);
+      border: 0;
+      margin: 2.5rem 0;
+    }
+
+    .markdown-body ul, .markdown-body ol {
+      padding-left: 1.75rem;
+      margin: 1rem 0;
+    }
+
+    .markdown-body li {
+      margin: 0.35rem 0;
+    }
+
+    .markdown-body code:not(pre code) {
+      padding: 0.2em 0.45em;
+      margin: 0 0.2em;
+      font-size: 85%;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background-color: var(--inline-code-bg);
+      color: var(--inline-code-color);
+    }
+
+    /* Syntax Highlighting */
+    .hljs { color: #e2e8f0; background: transparent; }
+    .hljs-keyword, .hljs-selector-tag, .hljs-subst { color: #f43f5e; font-weight: 600; }
+    .hljs-string, .hljs-title, .hljs-section, .hljs-attribute, .hljs-literal, .hljs-template-tag, .hljs-type { color: #38bdf8; }
+    .hljs-comment, .hljs-quote, .hljs-deletion { color: #64748b; font-style: italic; }
+    .hljs-number, .hljs-regexp, .hljs-link { color: #f59e0b; }
+    .hljs-variable, .hljs-punctuation { color: #cbd5e1; }
+    .hljs-function, .hljs-class .hljs-title { color: #a855f7; font-weight: 600; }
+    .hljs-symbol, .hljs-bullet { color: #ec4899; }
+    .hljs-tag, .hljs-name { color: #3b82f6; }
+
+    .code-block-wrapper {
+      margin: 1.5rem 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background-color: var(--code-bg);
+      color: var(--code-text);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background-color: rgba(2, 6, 23, 0.85);
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+      color: #94a3b8;
+    }
+
+    .copy-code-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: inherit;
+      color: #cbd5e1;
+      background-color: rgba(51, 65, 85, 0.8);
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .copy-code-btn:hover {
+      background-color: rgba(71, 85, 105, 1);
+      color: #ffffff;
+    }
+
+    .code-block-wrapper pre {
+      padding: 16px;
+      margin: 0;
+      overflow-x: auto;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      line-height: 1.55;
+    }
+
+    .code-line {
+      display: block;
+    }
+
+    .line-number {
+      display: inline-block;
+      width: 2.25rem;
+      padding-right: 1rem;
+      text-align: right;
+      color: #64748b;
+      user-select: none;
+    }
+
+    /* Tables */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 1.75rem 0;
+      border-radius: 10px;
+      border: 1px solid var(--table-border);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .table-container table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    .table-container th {
+      background-color: var(--table-header);
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid var(--table-border);
+    }
+
+    .table-container td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--table-border);
+    }
+
+    .table-container tbody tr:hover {
+      background-color: var(--table-row-alt);
+    }
+
+    .markdown-body img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+
+    .heading-anchor {
+      text-decoration: none !important;
+      opacity: 0.35;
+      margin-left: 8px;
+    }
+    .heading-anchor:hover {
+      opacity: 1;
+    }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .container { max-width: 100%; margin: 0; padding: 0; }
+      .copy-code-btn, .heading-anchor { display: none !important; }
+      .code-block-wrapper { break-inside: avoid; border: 1px solid #cbd5e1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="markdown-body">
+      ${renderedHtml}
+    </div>
+  </div>
+  <script>
+    document.querySelectorAll('.copy-code-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var code = decodeURIComponent(btn.getAttribute('data-code') || '');
+        if (code) {
+          navigator.clipboard.writeText(code);
+          var label = btn.querySelector('.copy-label');
+          if (label) {
+            var orig = label.textContent;
+            label.textContent = 'Kopirano!';
+            setTimeout(function() { label.textContent = orig; }, 2000);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+
+  // 1. Try File System Access API (showSaveFilePicker)
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: 'HTML Dokument (*.html)',
+            accept: {
+              'text/html': ['.html', '.htm'],
+            },
+          },
+        ],
+      });
+
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        return;
+      }
+      console.warn('showSaveFilePicker failed for HTML, using download fallback:', err);
+    }
+  }
+
+  // 2. Fallback: Browser download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 2000);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
