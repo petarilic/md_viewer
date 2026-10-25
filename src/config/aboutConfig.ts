@@ -27,8 +27,8 @@ export interface AboutConfig {
 export const APP_ABOUT_CONFIG: AboutConfig = {
   name: 'Markdown Viewer',
   version: '1.2.0',
-  buildNumber: '120',
-  releaseDate: '24. oktobar 2026.',
+  buildNumber: '125',
+  releaseDate: '25. oktobar 2026.',
   shortDescription:
     'Jednostavan i moćan alat za pregled, uređivanje i izvoz Markdown dokumenata.',
   aboutDetails:
@@ -44,23 +44,26 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
   whatsNew: [
     {
       version: '1.2.0',
-      date: 'Oktobar 2026',
+      date: '25. oktobar 2026',
       highlights: [
-        'Dodata opcija izvoza u samostalan HTML (.html) dokument sa vernim stilovima i kopiranjem koda',
-        'Dodata mogućnost skupljanja i širenja sekcija (collapsible TOC) u bočnoj traci sa brojačem',
-        'Poboljšan izvoz u PDF sa Save As dijalogom i prečicom Ctrl+P',
-        'Novo Scroll-to-top dugme sa glatkom animacijom i podrškom za teme',
-        'About modal sa informacijama o aplikaciji i prečicom na taster tilda (~)',
+        '[Nova funkcija] Integrisan Help sistem sa opisom svih opcija, pretragom i tabelom prečica (aktivacija na taster F1 ili klikom na "?" ikonicu)',
+        '[Nova funkcija] Implementiran About modal sa informacijama o izdanju, politici privatnosti i prečicom na taster tilda (~)',
+        '[Nova funkcija] Izvoz u samostalni HTML (.html) dokument sa vernim stilovima, podrškom za teme i kopiranjem blokova koda',
+        '[Nova funkcija] Sklopive sekcije (collapsible TOC) u bočnoj traci sa brojačem podsekcija (+N) i dugmadima "Skupi sve" i "Proširi sve"',
+        '[Nova funkcija] Scroll to top dugme sa fade-in/fade-out efektom i glatkim vraćanjem na vrh stranice',
+        '[Ispravka] Rešena greška pri generisanju PDF-a (problem parsiranja "oklch" boja u html2canvas-u zamenjen bezbednom konverzijom)',
+        '[Ispravka] Otklonjen bag praznog PDF dokumenta: obezbeđeno verno renderovanje sadržaja uz Save As dijalog i prečicu Ctrl+P',
+        '[Ispravka] Izolovano okidanje globalnih prečica (F1, ~, itd.) kako ne bi prekidalo unos koda i teksta unutar editora',
       ],
     },
     {
       version: '1.1.0',
       date: 'Septembar 2026',
       highlights: [
-        'Podeljeni prikaz (Split View) sa sinhronizovanim skrolovanjem',
-        'Napredna pretraga i zamena teksta u dokumentu (Ctrl+F, Ctrl+H)',
-        'Sistem šablona za brzi start (README, API, Specifikacije)',
-        'Izvoz u Microsoft Word (.docx) i Plain Text (.txt)',
+        '[Nova funkcija] Podeljeni prikaz (Split View) sa sinhronizovanim skrolovanjem editora i prikaza',
+        '[Nova funkcija] Napredna pretraga i zamena teksta u dokumentu (Ctrl+F, Ctrl+H)',
+        '[Nova funkcija] Sistem šablona za brzi start (README, API, Specifikacije, Beleške)',
+        '[Nova funkcija] Izvoz u Microsoft Word (.docx) i Čist tekst (.txt)',
       ],
     },
   ],

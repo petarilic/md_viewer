@@ -325,10 +325,37 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                       </span>
                       <span className="text-[10px] text-slate-400 font-normal">{item.date}</span>
                     </div>
-                    <ul className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300 pl-4 list-disc">
-                      {item.highlights.map((h, i) => (
-                        <li key={i}>{h}</li>
-                      ))}
+                    <ul className="space-y-2 text-[11px] text-slate-600 dark:text-slate-300">
+                      {item.highlights.map((h, i) => {
+                        const match = h.match(/^\[(.*?)\]\s*(.*)$/);
+                        if (match) {
+                          const tag = match[1];
+                          const text = match[2];
+                          const isFix =
+                            tag.toLowerCase().includes('ispravka') ||
+                            tag.toLowerCase().includes('fix') ||
+                            tag.toLowerCase().includes('bag');
+                          return (
+                            <li key={i} className="flex items-start gap-2">
+                              <span
+                                className={`inline-block text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-md shrink-0 mt-0.5 ${
+                                  isFix
+                                    ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60'
+                                    : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60'
+                                }`}
+                              >
+                                {tag}
+                              </span>
+                              <span className="leading-snug">{text}</span>
+                            </li>
+                          );
+                        }
+                        return (
+                          <li key={i} className="list-disc ml-4">
+                            {h}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 ))}
