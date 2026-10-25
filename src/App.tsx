@@ -39,6 +39,7 @@ import { Toast, ToastMessage } from './components/Toast';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { PdfExportModal } from './components/PdfExportModal';
 import { AboutModal } from './components/AboutModal';
+import { HelpModal } from './components/HelpModal';
 
 const DEFAULT_SETTINGS: ViewerSettings = {
   theme: 'system',
@@ -137,6 +138,7 @@ export default function App() {
   const [newDocInitialTemplate, setNewDocInitialTemplate] = useState<string>('empty');
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Unsaved changes confirmation modal state
   const [unsavedModal, setUnsavedModal] = useState<{
@@ -784,9 +786,16 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Global Keyboard Shortcuts (Ctrl+N, Ctrl+S, Ctrl+O, Ctrl+F, Ctrl+H, Ctrl+P, Tilde ~, Esc)
+  // Global Keyboard Shortcuts (F1, Ctrl+N, Ctrl+S, Ctrl+O, Ctrl+F, Ctrl+H, Ctrl+P, Tilde ~, Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // F1 Key: Open Help system anywhere (prevents default browser help)
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setIsHelpOpen((prev) => !prev);
+        return;
+      }
+
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
       // Check if user is actively typing in an input or editor field
@@ -830,6 +839,10 @@ export default function App() {
         e.preventDefault();
         handleOpenPdfExport();
       } else if (e.key === 'Escape') {
+        if (isHelpOpen) {
+          setIsHelpOpen(false);
+          return;
+        }
         if (isAboutOpen) {
           setIsAboutOpen(false);
           return;
@@ -842,7 +855,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDocument, searchState.isOpen, isAboutOpen, handleOpenPdfExport]);
+  }, [activeDocument, searchState.isOpen, isAboutOpen, isHelpOpen, handleOpenPdfExport]);
 
   // Search Navigation
   const handleNextMatch = () => {
@@ -920,6 +933,7 @@ export default function App() {
         canRedo={editorRef.current?.canRedo ?? false}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAbout={() => setIsAboutOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
         settings={settings}
         onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
         onCopyMarkdown={handleCopyMarkdown}
@@ -1053,6 +1067,7 @@ export default function App() {
             toc.find((t) => t.id === activeHeadingId)?.text || null
           }
           onOpenAbout={() => setIsAboutOpen(true)}
+          onOpenHelp={() => setIsHelpOpen(true)}
         />
       )}
 
@@ -1069,6 +1084,13 @@ export default function App() {
       <AboutModal
         isOpen={isAboutOpen}
         onClose={() => setIsAboutOpen(false)}
+      />
+
+      {/* Help System Modal */}
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        onOpenSampleGuide={() => handleOpenSample('quickstart')}
       />
 
       {/* New Document Modal with Templates */}

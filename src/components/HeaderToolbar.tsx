@@ -34,6 +34,7 @@ import {
   History,
   Scale,
   Info,
+  HelpCircle,
 } from 'lucide-react';
 import { ViewMode, Theme, ViewerSettings } from '../types';
 
@@ -58,6 +59,7 @@ interface HeaderToolbarProps {
   canRedo?: boolean;
   onOpenSettings: () => void;
   onOpenAbout?: () => void;
+  onOpenHelp?: () => void;
   settings: ViewerSettings;
   onUpdateSettings: (newSettings: Partial<ViewerSettings>) => void;
   onCopyMarkdown: () => void;
@@ -94,6 +96,7 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   canRedo = false,
   onOpenSettings,
   onOpenAbout,
+  onOpenHelp,
   settings,
   onUpdateSettings,
   onCopyMarkdown,
@@ -582,6 +585,16 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
           </button>
 
+          {/* Help button (Desktop) */}
+          <button
+            onClick={onOpenHelp}
+            className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
+            title="Pomoć i uputstvo (Help) [F1]"
+            aria-label="Pomoć (F1)"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+
           {/* Discrete Info / About button (Desktop) */}
           <button
             onClick={onOpenAbout}
@@ -994,6 +1007,22 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                 >
                   <Maximize className="w-4 h-4 text-slate-400" />
                   <span>Ceo ekran (Fullscreen)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onOpenHelp?.();
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <HelpCircle className="w-4 h-4 text-blue-500" />
+                    <span>Pomoć i uputstvo (Help)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-semibold">
+                    F1
+                  </span>
                 </button>
 
                 <button

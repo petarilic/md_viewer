@@ -1,6 +1,6 @@
 import React from 'react';
 import { DocumentStats, ViewMode } from '../types';
-import { FileText, Clock, Type, ShieldCheck, Eye, Edit3, Columns, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { FileText, Clock, Type, ShieldCheck, Eye, Edit3, Columns, CheckCircle2, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { formatBytes } from '../utils/markdown';
 
 interface StatusBarProps {
@@ -10,6 +10,7 @@ interface StatusBarProps {
   viewMode: ViewMode;
   activeHeading: string | null;
   onOpenAbout?: () => void;
+  onOpenHelp?: () => void;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -19,6 +20,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   viewMode,
   activeHeading,
   onOpenAbout,
+  onOpenHelp,
 }) => {
   const viewModeIcons = {
     edit: <Edit3 className="w-3 h-3 text-amber-500" />,
@@ -105,6 +107,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <ShieldCheck className="w-3.5 h-3.5" />
           <span className="text-[10px]">Lokalna obrada</span>
         </div>
+
+        {onOpenHelp && (
+          <button
+            onClick={onOpenHelp}
+            className="flex items-center gap-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 px-1.5 py-0.5 rounded transition cursor-pointer"
+            title="Pomoć i uputstvo (Help) [F1]"
+            aria-label="Pomoć (F1)"
+          >
+            <HelpCircle className="w-3 h-3 text-blue-500" />
+            <span className="text-[10px] font-mono">F1</span>
+          </button>
+        )}
 
         {onOpenAbout && (
           <button
