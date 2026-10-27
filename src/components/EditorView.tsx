@@ -46,10 +46,25 @@ interface EditorViewProps {
   onScroll?: (e: React.UIEvent<HTMLTextAreaElement>) => void;
   searchState?: SearchState;
   onUpdateTotalMatches?: (total: number) => void;
+  diffLineStatus?: Map<number, { type: 'added' | 'removed' | 'modified'; diffItemId: string }>;
+  selectedDiffId?: string | null;
 }
 
 export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
-  ({ content, onChange, settings, onCopySuccess, onScroll, searchState, onUpdateTotalMatches }, ref) => {
+  (
+    {
+      content,
+      onChange,
+      settings,
+      onCopySuccess,
+      onScroll,
+      searchState,
+      onUpdateTotalMatches,
+      diffLineStatus,
+      selectedDiffId,
+    },
+    ref
+  ) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const lineNumbersRef = useRef<HTMLDivElement>(null);
     const [wordWrap, setWordWrap] = useState(settings.wordWrap ?? true);
@@ -597,16 +612,48 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
 
         {/* Editor Area with Line Numbers */}
         <div className="flex-1 flex overflow-hidden relative">
-          {/* Line Numbers Column */}
+          {/* Line Numbers Column with optional Diff markers */}
           <div
             ref={lineNumbersRef}
-            className="w-12 py-3 pr-2 text-right text-slate-600 bg-slate-950/30 border-r border-slate-800 select-none overflow-hidden font-mono shrink-0"
+            className="w-13 py-3 pr-1 text-right text-slate-500 bg-slate-950/30 border-r border-slate-800 select-none overflow-hidden font-mono shrink-0"
           >
-            {lines.map((_, i) => (
-              <div key={i} className={`${fontSizeClasses[settings.fontSize]} leading-6`}>
-                {i + 1}
-              </div>
-            ))}
+            {lines.map((_, i) => {
+              const lineNum = i + 1;
+              const diffInfo = diffLineStatus?.get(lineNum);
+              const isSelectedDiff = diffInfo && diffInfo.diffItemId === selectedDiffId;
+
+              let diffClass = '';
+              let badgeSymbol = '';
+
+              if (diffInfo) {
+                if (diffInfo.type === 'added') {
+                  diffClass =
+                    'bg-emerald-500/25 text-emerald-300 font-bold border-r-2 border-emerald-400';
+                  badgeSymbol = '+';
+                } else if (diffInfo.type === 'removed') {
+                  diffClass =
+                    'bg-rose-500/25 text-rose-300 font-bold border-r-2 border-rose-400';
+                  badgeSymbol = '-';
+                } else if (diffInfo.type === 'modified') {
+                  diffClass =
+                    'bg-amber-500/25 text-amber-300 font-bold border-r-2 border-amber-400';
+                  badgeSymbol = '~';
+                }
+              }
+
+              return (
+                <div
+                  key={i}
+                  className={`${fontSizeClasses[settings.fontSize]} leading-6 px-1 flex items-center justify-end gap-1 ${
+                    isSelectedDiff ? 'ring-1 ring-indigo-400 ' : ''
+                  }${diffClass}`}
+                  title={diffInfo ? `Razlika: linija ${lineNum} (${diffInfo.type})` : undefined}
+                >
+                  {badgeSymbol && <span className="text-[10px] font-black">{badgeSymbol}</span>}
+                  <span>{lineNum}</span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Textarea */}

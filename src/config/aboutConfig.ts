@@ -26,9 +26,9 @@ export interface AboutConfig {
 
 export const APP_ABOUT_CONFIG: AboutConfig = {
   name: 'Markdown Viewer',
-  version: '1.2.0',
-  buildNumber: '125',
-  releaseDate: '25. oktobar 2026.',
+  version: '1.3.0',
+  buildNumber: '130',
+  releaseDate: '27. oktobar 2026.',
   shortDescription:
     'Jednostavan i moćan alat za pregled, uređivanje i izvoz Markdown dokumenata.',
   aboutDetails:
@@ -43,8 +43,22 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
   madeWithText: 'Napravljeno sa pažnjom • Made with care.',
   whatsNew: [
     {
+      version: '1.3.0',
+      date: '27. oktobar 2026',
+      highlights: [
+        '[Nova funkcija] Split Screen Mode za dva otvorena dokumenta: omogućava istovremeni pregled i rad sa dva različita fajla na jednom ekranu (dugme se automatski pojavljuje isključivo kada su učitana tačno dva dokumenta)',
+        '[Nova funkcija] Fleksibilan raspored u Split Screen Mode-u: opcije "Uredi" i "Prikaz" prikazuju dokumente jedan pored drugog (side-by-side), dok opcija "Podeljeno" prikazuje dokumente jedan ispod drugog (stacked)',
+        '[Nova funkcija] Diff alat za analizu i poređenje: automatsko pronalaženje razlika između levog i desnog dokumenta uz navođenje tačnog broja linije i uporednih vrednosti (levi protiv desnog)',
+        '[Nova funkcija] Kolor-kodirano markiranje razlika u dokumentima: vizuelno istaknute linije (zelena za dodavanja u desnom dokumentu, crvena za uklanjanja iz levog dokumenta, ćilibar/žuta za izmenjene linije) uz interaktivnu listu razlika i brzu navigaciju',
+        '[Nova funkcija] Poravnata tabela razlika (Aligned Diff Table): mogućnost direktnog uporednog tabelarnog prikaza linija po linija u Diff modu',
+        '[Nova funkcija] Brza zamena mesta dokumentima (Levo <-> Desno) i sinhronizovano skrolovanje u Split Screen prikazu',
+        '[Nova funkcija] Drag & Drop učitavanje fajlova direktno na traku sa tabovima sa namenskim isprekidanim pravougaonikom za spuštanje i otvaranje pored već otvorenih dokumenata',
+        '[Nova funkcija] Izvoz u DOCX i PDF sada verno reflektuje izabranu veličinu fonta, tipografiju i širinu stranice (margine) iz podešavanja',
+      ],
+    },
+    {
       version: '1.2.0',
-      date: '25. oktobar 2026',
+      date: '27. oktobar 2026',
       highlights: [
         '[Nova funkcija] Integrisan Help sistem sa opisom svih opcija, pretragom i tabelom prečica (aktivacija na taster F1 ili klikom na "?" ikonicu)',
         '[Nova funkcija] Implementiran About modal sa informacijama o izdanju, politici privatnosti i prečicom na taster tilda (~)',

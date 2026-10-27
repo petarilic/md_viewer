@@ -179,7 +179,7 @@ Format je zasnovan na standardu [Keep a Changelog](https://keepachangelog.com/en
 
 ---
 
-## [v1.2.0] - ${new Date().toISOString().split('T')[0]}
+## [v1.3.0] - ${new Date().toISOString().split('T')[0]}
 
 ### ✨ Dodato
 - Podrška za izvoz u Microsoft Word (\`.docx\`) format sa očuvanim stilovima i tabelama.
@@ -537,7 +537,7 @@ Molimo popunite sva relevantna polja kako bismo što brže identifikovali i reš
 ## 💻 Informacije o Okruženju
 - **Operativni Sistem:** [npr. Windows 11, macOS Sequoia, Ubuntu 24.04, Android 15]
 - **Pregledač (Browser):** [npr. Chrome 130, Firefox 132, Safari 18]
-- **Verzija Aplikacije:** [npr. v1.2.0]
+- **Verzija Aplikacije:** [npr. v1.3.0]
 
 ---
 

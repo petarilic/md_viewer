@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { renderMarkdownToHtml } from './markdown';
+import { ViewerSettings, FontSize } from '../types';
 
 export interface PdfExportOptions {
   filename: string;
@@ -8,6 +9,7 @@ export interface PdfExportOptions {
   orientation?: 'p' | 'l';
   theme?: 'light' | 'dark';
   includeHeader?: boolean;
+  settings?: ViewerSettings;
 }
 
 /**
@@ -70,18 +72,106 @@ export async function generatePdfBlob(
     `;
   }
 
+  // 1. Resolve Font Family for PDF
+  const fontFamilyCss =
+    options.settings?.fontFamily === 'serif'
+      ? 'Georgia, Cambria, "Times New Roman", Times, serif'
+      : options.settings?.fontFamily === 'mono'
+      ? 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+      : 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+  // 2. Resolve Font Sizes based on user settings
+  const fontSizeMap: Record<
+    string,
+    { body: string; h1: string; h2: string; h3: string; h4: string; code: string; table: string }
+  > = {
+    sm: { body: '13px', h1: '23px', h2: '19px', h3: '16px', h4: '14px', code: '11px', table: '11.5px' },
+    base: { body: '15px', h1: '27px', h2: '22px', h3: '18px', h4: '15.5px', code: '12.5px', table: '13px' },
+    lg: { body: '17.5px', h1: '31px', h2: '25px', h3: '21px', h4: '18px', code: '14px', table: '14.5px' },
+    xl: { body: '20px', h1: '35px', h2: '29px', h3: '24px', h4: '20.5px', code: '15.5px', table: '16px' },
+  };
+  const fontSizes = fontSizeMap[options.settings?.fontSize || 'base'] || fontSizeMap.base;
+
+  // 3. Resolve Margins / Width based on contentWidth setting
+  // 'narrow': narrow content with generous wide margins
+  // 'standard': standard comfortable margins
+  // 'wide': wider content with narrower margins
+  // 'full': minimal margins
+  let paddingCss = isLandscape ? '40px 56px' : '40px 48px';
+  let maxWidthCss = isLandscape ? '960px' : '820px';
+
+  switch (options.settings?.contentWidth) {
+    case 'narrow':
+      paddingCss = isLandscape ? '44px 88px' : '44px 76px';
+      maxWidthCss = isLandscape ? '800px' : '680px';
+      break;
+    case 'standard':
+      paddingCss = isLandscape ? '40px 56px' : '40px 48px';
+      maxWidthCss = isLandscape ? '960px' : '820px';
+      break;
+    case 'wide':
+      paddingCss = isLandscape ? '36px 36px' : '36px 28px';
+      maxWidthCss = isLandscape ? '1060px' : '890px';
+      break;
+    case 'full':
+      paddingCss = isLandscape ? '28px 24px' : '28px 18px';
+      maxWidthCss = '100%';
+      break;
+  }
+
+  // 4. Resolve Line Spacing
+  const lineSpacingCss =
+    options.settings?.lineSpacing === 'compact'
+      ? '1.38'
+      : options.settings?.lineSpacing === 'relaxed'
+      ? '1.8'
+      : '1.58';
+
   // Embed exact styling so markdown-body, highlight.js, tables, and code blocks
-  // look identical to the rendered view.
+  // faithfully reflect the user's typography, size, margins, and theme.
   stage.innerHTML = `
     <style>
       #pdf-export-stage * {
         box-sizing: border-box;
       }
       .pdf-content-wrapper {
-        padding: 44px 52px;
+        padding: ${paddingCss};
+        max-width: ${maxWidthCss};
         width: 100%;
         margin: 0 auto;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: ${fontFamilyCss};
+        font-size: ${fontSizes.body};
+        line-height: ${lineSpacingCss};
+      }
+      .markdown-body {
+        font-family: ${fontFamilyCss} !important;
+        font-size: ${fontSizes.body} !important;
+        line-height: ${lineSpacingCss} !important;
+      }
+      .markdown-body h1 {
+        font-size: ${fontSizes.h1} !important;
+        line-height: 1.25 !important;
+        margin-top: 1.5rem !important;
+        margin-bottom: 0.75rem !important;
+      }
+      .markdown-body h2 {
+        font-size: ${fontSizes.h2} !important;
+        line-height: 1.3 !important;
+        margin-top: 1.3rem !important;
+        margin-bottom: 0.65rem !important;
+      }
+      .markdown-body h3 {
+        font-size: ${fontSizes.h3} !important;
+        line-height: 1.35 !important;
+        margin-top: 1.1rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      .markdown-body h4 {
+        font-size: ${fontSizes.h4} !important;
+      }
+      .markdown-body p, .markdown-body li {
+        font-size: ${fontSizes.body} !important;
+        line-height: ${lineSpacingCss} !important;
       }
       .copy-code-btn, .heading-anchor {
         display: none !important;
@@ -96,6 +186,7 @@ export async function generatePdfBlob(
       .table-container table {
         width: 100% !important;
         border-collapse: collapse !important;
+        font-size: ${fontSizes.table} !important;
       }
       .code-block-wrapper {
         margin: 1.25rem 0 !important;
@@ -106,6 +197,7 @@ export async function generatePdfBlob(
       .code-block-wrapper pre {
         white-space: pre-wrap !important;
         word-break: break-all !important;
+        font-size: ${fontSizes.code} !important;
       }
     </style>
     <div class="pdf-content-wrapper ${isDark ? 'dark bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}">

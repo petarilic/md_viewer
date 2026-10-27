@@ -134,11 +134,65 @@ export function exportToTxt(markdown: string, baseFilename: string): void {
 
 /**
  * Converts Markdown to a native Microsoft Word (.docx) document according to Specification 8.1 & AC-10.
- * Maps H1-H6 to Word Heading styles, converts paragraphs, lists, code blocks, tables and blockquotes.
+ * Respects user's active ViewerSettings (font family, font size, page margins / column width, line spacing).
  */
-export async function exportToDocx(markdown: string, baseFilename: string): Promise<void> {
+export async function exportToDocx(
+  markdown: string,
+  baseFilename: string,
+  settings?: ViewerSettings
+): Promise<void> {
   const lines = markdown.split(/\r?\n/);
   const docElements: (Paragraph | Table)[] = [];
+
+  // 1. Resolve Font Family for DOCX
+  const docxFont =
+    settings?.fontFamily === 'serif'
+      ? 'Georgia'
+      : settings?.fontFamily === 'mono'
+      ? 'Consolas'
+      : 'Calibri';
+
+  // 2. Resolve Font Sizes in half-points (1 pt = 2 half-points)
+  const sizeMap: Record<
+    string,
+    { body: number; h1: number; h2: number; h3: number; h4: number; code: number; table: number }
+  > = {
+    sm: { body: 20, h1: 30, h2: 26, h3: 23, h4: 21, code: 17, table: 18 }, // 10pt body
+    base: { body: 23, h1: 34, h2: 30, h3: 26, h4: 24, code: 19, table: 21 }, // 11.5pt body
+    lg: { body: 26, h1: 38, h2: 34, h3: 30, h4: 27, code: 22, table: 24 }, // 13pt body
+    xl: { body: 30, h1: 44, h2: 38, h3: 34, h4: 30, code: 25, table: 27 }, // 15pt body
+  };
+  const fontSizes = sizeMap[settings?.fontSize || 'base'] || sizeMap.base;
+
+  // 3. Resolve Margins in twips (1 inch = 1440 twips) based on contentWidth setting
+  // 'narrow' = wide margins (2160 twips / 1.5 in)
+  // 'standard' = standard margins (1440 twips / 1.0 in)
+  // 'wide' = narrower margins (1080 twips / 0.75 in)
+  // 'full' = minimal margins (720 twips / 0.5 in)
+  let marginTwips = 1440;
+  switch (settings?.contentWidth) {
+    case 'narrow':
+      marginTwips = 2160;
+      break;
+    case 'standard':
+      marginTwips = 1440;
+      break;
+    case 'wide':
+      marginTwips = 1080;
+      break;
+    case 'full':
+      marginTwips = 720;
+      break;
+  }
+
+  // 4. Resolve Line Spacing rule in twips
+  // 240 = single, 276 = 1.15x, 360 = 1.5x
+  const lineSpacingRule =
+    settings?.lineSpacing === 'compact'
+      ? 240
+      : settings?.lineSpacing === 'relaxed'
+      ? 360
+      : 276;
 
   let inCodeBlock = false;
   let codeBuffer: string[] = [];
@@ -155,11 +209,11 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
           new TextRun({
             text: codeText,
             font: 'Consolas',
-            size: 19, // 9.5 pt
+            size: fontSizes.code,
             color: '1E293B',
           }),
         ],
-        spacing: { before: 120, after: 120 },
+        spacing: { before: 120, after: 120, line: 240 },
         shading: {
           color: 'F1F5F9',
         },
@@ -190,8 +244,9 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
                     children: [
                       new TextRun({
                         text: cleanInlineMarkdown(cellText.trim()),
+                        font: docxFont,
                         bold: isHeader,
-                        size: 21,
+                        size: fontSizes.table,
                         color: isHeader ? '0F172A' : '334155',
                       }),
                     ],
@@ -275,11 +330,28 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
         6: HeadingLevel.HEADING_6,
       };
 
+      const headingSizes: Record<number, number> = {
+        1: fontSizes.h1,
+        2: fontSizes.h2,
+        3: fontSizes.h3,
+        4: fontSizes.h4,
+        5: fontSizes.h4,
+        6: fontSizes.h4,
+      };
+
       docElements.push(
         new Paragraph({
-          text: headingText,
+          children: [
+            new TextRun({
+              text: headingText,
+              font: docxFont,
+              size: headingSizes[level] || fontSizes.h1,
+              bold: true,
+              color: level === 1 ? '0F172A' : level === 2 ? '1E293B' : '334155',
+            }),
+          ],
           heading: headingMap[level] || HeadingLevel.HEADING_1,
-          spacing: { before: 240, after: 120 },
+          spacing: { before: 240, after: 120, line: lineSpacingRule },
         })
       );
       continue;
@@ -304,6 +376,8 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
           children: [
             new TextRun({
               text: cleanInlineMarkdown(quoteText),
+              font: docxFont,
+              size: fontSizes.body,
               italics: true,
               color: '475569',
             }),
@@ -312,7 +386,7 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
           border: {
             left: { style: BorderStyle.SINGLE, size: 6, color: '3B82F6' },
           },
-          spacing: { before: 100, after: 100 },
+          spacing: { before: 100, after: 100, line: lineSpacingRule },
         })
       );
       continue;
@@ -326,8 +400,14 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
         docElements.push(
           new Paragraph({
             bullet: { level: 0 },
-            children: [new TextRun(itemText)],
-            spacing: { before: 40, after: 40 },
+            children: [
+              new TextRun({
+                text: itemText,
+                font: docxFont,
+                size: fontSizes.body,
+              }),
+            ],
+            spacing: { before: 40, after: 40, line: lineSpacingRule },
           })
         );
         continue;
@@ -342,10 +422,19 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
         docElements.push(
           new Paragraph({
             children: [
-              new TextRun({ text: `${numMatch[1]}. `, bold: true }),
-              new TextRun(itemText),
+              new TextRun({
+                text: `${numMatch[1]}. `,
+                font: docxFont,
+                size: fontSizes.body,
+                bold: true,
+              }),
+              new TextRun({
+                text: itemText,
+                font: docxFont,
+                size: fontSizes.body,
+              }),
             ],
-            spacing: { before: 40, after: 40 },
+            spacing: { before: 40, after: 40, line: lineSpacingRule },
           })
         );
         continue;
@@ -356,8 +445,8 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
     if (line.trim().length > 0) {
       docElements.push(
         new Paragraph({
-          children: parseInlineRuns(line),
-          spacing: { before: 60, after: 80 },
+          children: parseInlineRuns(line, docxFont, fontSizes.body, fontSizes.code),
+          spacing: { before: 60, after: 80, line: lineSpacingRule },
         })
       );
     }
@@ -366,11 +455,35 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
   if (inCodeBlock) flushCodeBlock();
   if (inTable) flushTable();
 
-  // Create docx Document
+  // Create docx Document with custom styles and page margins
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: docxFont,
+            size: fontSizes.body,
+          },
+          paragraph: {
+            spacing: {
+              line: lineSpacingRule,
+            },
+          },
+        },
+      },
+    },
     sections: [
       {
-        properties: {},
+        properties: {
+          page: {
+            margin: {
+              top: 1440,
+              bottom: 1440,
+              left: marginTwips,
+              right: marginTwips,
+            },
+          },
+        },
         children: docElements.length > 0 ? docElements : [new Paragraph({ text: '' })],
       },
     ],
@@ -390,9 +503,14 @@ export async function exportToDocx(markdown: string, baseFilename: string): Prom
 }
 
 /**
- * Parses inline bold, italic, and code text into docx TextRuns
+ * Parses inline bold, italic, and code text into docx TextRuns with user's font and size
  */
-function parseInlineRuns(line: string): TextRun[] {
+function parseInlineRuns(
+  line: string,
+  font: string = 'Calibri',
+  bodySize: number = 23,
+  codeSize: number = 19
+): TextRun[] {
   const runs: TextRun[] = [];
   // Tokenize bold, italic, code, or plain text
   const regex = /(\*\*\*|___)(.*?)\1|(\*\*|__)(.*?)\3|(\*|_)(.*?)\5|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)/g;
@@ -402,42 +520,91 @@ function parseInlineRuns(line: string): TextRun[] {
 
   while ((match = regex.exec(line)) !== null) {
     if (match.index > lastIndex) {
-      runs.push(new TextRun(line.substring(lastIndex, match.index)));
+      runs.push(
+        new TextRun({
+          text: line.substring(lastIndex, match.index),
+          font,
+          size: bodySize,
+        })
+      );
     }
 
     if (match[1]) {
       // Bold + Italic
-      runs.push(new TextRun({ text: match[2], bold: true, italics: true }));
+      runs.push(
+        new TextRun({
+          text: match[2],
+          font,
+          size: bodySize,
+          bold: true,
+          italics: true,
+        })
+      );
     } else if (match[3]) {
       // Bold
-      runs.push(new TextRun({ text: match[4], bold: true }));
+      runs.push(
+        new TextRun({
+          text: match[4],
+          font,
+          size: bodySize,
+          bold: true,
+        })
+      );
     } else if (match[5]) {
       // Italic
-      runs.push(new TextRun({ text: match[6], italics: true }));
+      runs.push(
+        new TextRun({
+          text: match[6],
+          font,
+          size: bodySize,
+          italics: true,
+        })
+      );
     } else if (match[7]) {
       // Inline Code
       runs.push(
         new TextRun({
           text: match[7],
           font: 'Consolas',
-          size: 19,
+          size: codeSize,
           color: 'BE185D',
         })
       );
     } else if (match[8] && match[9]) {
       // Link: Text (URL)
-      runs.push(new TextRun({ text: match[8], color: '2563EB', underline: {} }));
-      runs.push(new TextRun({ text: ` (${match[9]})`, color: '64748B' }));
+      runs.push(
+        new TextRun({
+          text: match[8],
+          font,
+          size: bodySize,
+          color: '2563EB',
+          underline: {},
+        })
+      );
+      runs.push(
+        new TextRun({
+          text: ` (${match[9]})`,
+          font,
+          size: bodySize,
+          color: '64748B',
+        })
+      );
     }
 
     lastIndex = regex.lastIndex;
   }
 
   if (lastIndex < line.length) {
-    runs.push(new TextRun(line.substring(lastIndex)));
+    runs.push(
+      new TextRun({
+        text: line.substring(lastIndex),
+        font,
+        size: bodySize,
+      })
+    );
   }
 
-  return runs.length > 0 ? runs : [new TextRun(line)];
+  return runs.length > 0 ? runs : [new TextRun({ text: line, font, size: bodySize })];
 }
 
 /**

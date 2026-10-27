@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileType, Check, Loader2, Download, Sun, Moon } from 'lucide-react';
+import { X, FileType, Check, Loader2, Download, Sun, Moon, Sliders } from 'lucide-react';
 import { generatePdfBlob, savePdfFile, PdfExportOptions } from '../utils/pdfExport';
+import { ViewerSettings } from '../types';
 
 interface PdfExportModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface PdfExportModalProps {
   defaultFilename: string;
   markdown: string;
   documentTitle: string;
+  settings: ViewerSettings;
   onSuccess: (savedName: string, method: 'picker' | 'download') => void;
   onError: (errorMsg: string) => void;
 }
@@ -18,6 +20,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   defaultFilename,
   markdown,
   documentTitle,
+  settings,
   onSuccess,
   onError,
 }) => {
@@ -73,6 +76,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
         orientation,
         theme,
         includeHeader,
+        settings,
       };
 
       // 1. Generate PDF blob
@@ -159,6 +163,43 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Možete uneti željeno ime fajla pre čuvanja.
             </p>
+          </div>
+
+          {/* Active Settings Banner */}
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1 text-xs">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
+              <Sliders className="w-3.5 h-3.5 text-blue-500" />
+              <span>Primenjena podešavanja (font, tipografija i margine):</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 pt-0.5">
+              <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium">
+                {settings.fontSize === 'sm'
+                  ? 'Mala veličina'
+                  : settings.fontSize === 'lg'
+                  ? 'Velika veličina'
+                  : settings.fontSize === 'xl'
+                  ? 'Ekstra velika'
+                  : 'Normalna veličina'}
+              </span>
+              <span>•</span>
+              <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium">
+                {settings.fontFamily === 'serif'
+                  ? 'Serif (Knjiški)'
+                  : settings.fontFamily === 'mono'
+                  ? 'Monospace (Kôdni)'
+                  : 'Sans-Serif (Moderni)'}
+              </span>
+              <span>•</span>
+              <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium">
+                {settings.contentWidth === 'narrow'
+                  ? 'Široke margine'
+                  : settings.contentWidth === 'wide'
+                  ? 'Uže margine'
+                  : settings.contentWidth === 'full'
+                  ? 'Minimalne margine'
+                  : 'Standardne margine'}
+              </span>
+            </div>
           </div>
 
           {/* Page Layout Settings */}

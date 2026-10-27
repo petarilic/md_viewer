@@ -1,7 +1,21 @@
 import React from 'react';
 import { DocumentStats, ViewMode } from '../types';
-import { FileText, Clock, Type, ShieldCheck, Eye, Edit3, Columns, CheckCircle2, AlertCircle, Info, HelpCircle } from 'lucide-react';
+import {
+  FileText,
+  Clock,
+  Type,
+  ShieldCheck,
+  Eye,
+  Edit3,
+  Columns,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  HelpCircle,
+  GitCompare,
+} from 'lucide-react';
 import { formatBytes } from '../utils/markdown';
+import { APP_ABOUT_CONFIG } from '../config/aboutConfig';
 
 interface StatusBarProps {
   fileName: string;
@@ -11,6 +25,8 @@ interface StatusBarProps {
   activeHeading: string | null;
   onOpenAbout?: () => void;
   onOpenHelp?: () => void;
+  isSplitScreenActive?: boolean;
+  isDiffActive?: boolean;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -21,6 +37,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   activeHeading,
   onOpenAbout,
   onOpenHelp,
+  isSplitScreenActive = false,
+  isDiffActive = false,
 }) => {
   const viewModeIcons = {
     edit: <Edit3 className="w-3 h-3 text-amber-500" />,
@@ -95,6 +113,20 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           </div>
         )}
 
+        {isSplitScreenActive && (
+          <div className="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-semibold text-[10px]">
+            <Columns className="w-3 h-3 text-indigo-500" />
+            <span>Split Screen (2 dok.)</span>
+          </div>
+        )}
+
+        {isDiffActive && (
+          <div className="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/70 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 font-semibold text-[10px]">
+            <GitCompare className="w-3 h-3 text-violet-500" />
+            <span>Diff Uključen</span>
+          </div>
+        )}
+
         <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
           {viewModeIcons[viewMode]}
           <span>{viewModeLabels[viewMode]}</span>
@@ -128,7 +160,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             aria-label="O aplikaciji"
           >
             <Info className="w-3 h-3 text-indigo-500" />
-            <span className="text-[10px] font-mono">v1.2.0</span>
+            <span className="text-[10px] font-mono">v{APP_ABOUT_CONFIG.version}</span>
           </button>
         )}
       </div>

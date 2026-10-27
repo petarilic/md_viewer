@@ -27,6 +27,7 @@ import { TOCSidebar } from './components/TOCSidebar';
 import { RenderedView } from './components/RenderedView';
 import { EditorView, EditorViewRef } from './components/EditorView';
 import { SplitView } from './components/SplitView';
+import { SplitScreenContainer } from './components/SplitScreenContainer';
 import { StatusBar } from './components/StatusBar';
 import { SearchOverlay } from './components/SearchOverlay';
 import { SettingsModal } from './components/SettingsModal';
@@ -40,6 +41,7 @@ import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { PdfExportModal } from './components/PdfExportModal';
 import { AboutModal } from './components/AboutModal';
 import { HelpModal } from './components/HelpModal';
+import { FileUp } from 'lucide-react';
 
 const DEFAULT_SETTINGS: ViewerSettings = {
   theme: 'system',
@@ -139,6 +141,18 @@ export default function App() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  // Split Screen Mode & Diff states (available strictly when exactly 2 documents are open)
+  const [isSplitScreenActive, setIsSplitScreenActive] = useState(false);
+  const [isDiffActive, setIsDiffActive] = useState(false);
+
+  // Auto-deactivate split screen & diff if documents count is not exactly 2
+  useEffect(() => {
+    if (documents.length !== 2) {
+      if (isSplitScreenActive) setIsSplitScreenActive(false);
+      if (isDiffActive) setIsDiffActive(false);
+    }
+  }, [documents.length, isSplitScreenActive, isDiffActive]);
 
   // Unsaved changes confirmation modal state
   const [unsavedModal, setUnsavedModal] = useState<{
@@ -337,8 +351,8 @@ export default function App() {
             const text = await res.text();
             addDocument(
               {
-                id: 'spec-combined-v1.2',
-                name: 'MD_Viewer_Editor_Specifikacija_v1.2.md',
+                id: 'spec-combined-v1.3',
+                name: 'MD_Viewer_Editor_Specifikacija_v1.3.md',
                 content: text,
                 initialContent: text,
                 isModified: false,
@@ -424,6 +438,52 @@ export default function App() {
       })
     );
   };
+
+  // Swap left and right documents in Split Screen Mode
+  const handleSwapDocs = useCallback(() => {
+    setDocuments((prev) => {
+      if (prev.length !== 2) return prev;
+      return [prev[1], prev[0]];
+    });
+    showToast('Zamenjen raspored levog i desnog dokumenta.');
+  }, [showToast]);
+
+  // Edit Left document in Split Screen Mode
+  const handleChangeContentLeft = useCallback((newContent: string) => {
+    setDocuments((prev) => {
+      if (prev.length < 1) return prev;
+      const target = prev[0];
+      const isModified = newContent !== target.initialContent;
+      return [
+        {
+          ...target,
+          content: newContent,
+          isModified,
+          size: new Blob([newContent]).size,
+        },
+        ...prev.slice(1),
+      ];
+    });
+  }, []);
+
+  // Edit Right document in Split Screen Mode
+  const handleChangeContentRight = useCallback((newContent: string) => {
+    setDocuments((prev) => {
+      if (prev.length < 2) return prev;
+      const target = prev[1];
+      const isModified = newContent !== target.initialContent;
+      return [
+        prev[0],
+        {
+          ...target,
+          content: newContent,
+          isModified,
+          size: new Blob([newContent]).size,
+        },
+        ...prev.slice(2),
+      ];
+    });
+  }, []);
 
   // Rename document
   const handleRenameDocument = (newName: string) => {
@@ -602,25 +662,37 @@ export default function App() {
     e.target.value = '';
   };
 
-  // Drag and Drop
-  const handleDragOver = (e: React.DragEvent) => {
+  // Drag and Drop tracking ref & handler
+  const dragCounterRef = useRef(0);
+
+  const handleGlobalDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+      setIsDragging(true);
+    }
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleGlobalDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    e.dataTransfer.dropEffect = 'copy';
+    if (!isDragging) {
+      setIsDragging(true);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleGlobalDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
 
-    const files = e.dataTransfer.files;
+  const handleProcessDroppedFiles = (files: FileList | File[]) => {
+    setIsDragging(false);
+    dragCounterRef.current = 0;
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
@@ -638,10 +710,18 @@ export default function App() {
           source: 'local',
         };
         addDocument(newDoc, 'rendered');
-        showToast(`Učitan fajl "${file.name}".`);
+        showToast(`Učitan dokument "${file.name}".`);
+      };
+      reader.onerror = () => {
+        showToast(`Greška pri čitanju fajla "${file.name}".`, 'error');
       };
       reader.readAsText(file, 'UTF-8');
     });
+  };
+
+  const handleGlobalDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    handleProcessDroppedFiles(e.dataTransfer.files);
   };
 
   // Close tab with unsaved changes verification
@@ -724,8 +804,8 @@ export default function App() {
   const handleExportDocx = async () => {
     if (!activeDocument) return;
     try {
-      await exportToDocx(activeDocument.content, activeDocument.name);
-      showToast(`Dokument "${activeDocument.name}" uspešno izvezen u DOCX!`);
+      await exportToDocx(activeDocument.content, activeDocument.name, settings);
+      showToast(`Dokument "${activeDocument.name}" uspešno izvezen u DOCX sa podešavanjima!`);
     } catch (err) {
       console.error(err);
       showToast('Greška pri izvozu u DOCX dokument.', 'error');
@@ -895,11 +975,11 @@ export default function App() {
 
   return (
     <div
-      className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-auto"
-      onDragOver={handleDragOver}
-      onDragEnter={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 select-auto relative"
+      onDragEnter={handleGlobalDragEnter}
+      onDragOver={handleGlobalDragOver}
+      onDragLeave={handleGlobalDragLeave}
+      onDrop={handleGlobalDrop}
     >
       {/* Hidden file input */}
       <input
@@ -947,9 +1027,15 @@ export default function App() {
         onToggleFullscreen={handleToggleFullscreen}
         documentTitle={activeDocument?.name || 'Untitled.md'}
         onRenameDocument={handleRenameDocument}
+        canSplitScreen={documents.length === 2}
+        isSplitScreenActive={isSplitScreenActive}
+        onToggleSplitScreen={() => setIsSplitScreenActive((prev) => !prev)}
+        canDiff={documents.length === 2 && isSplitScreenActive}
+        isDiffActive={isDiffActive}
+        onToggleDiff={() => setIsDiffActive((prev) => !prev)}
       />
 
-      {/* Tab Bar for open documents */}
+      {/* Tab Bar for open documents with Drag & Drop target */}
       <TabBar
         documents={documents}
         activeDocId={activeDocId}
@@ -962,7 +1048,18 @@ export default function App() {
             prev.map((d) => (d.id === id ? { ...d, name } : d))
           );
         }}
+        isDragging={isDragging}
+        onDropFiles={handleProcessDroppedFiles}
+        onOpenFilePicker={handleRequestOpenFile}
       />
+
+      {/* Floating Drag Indicator when document is open */}
+      {isDragging && activeDocument && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-4 py-2.5 rounded-2xl bg-blue-600/95 text-white shadow-2xl shadow-blue-500/30 border border-blue-400 flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-3 duration-150 backdrop-blur-xs">
+          <FileUp className="w-4 h-4 animate-bounce shrink-0" />
+          <span>Otpustite dokument na traku sa tabovima ili bilo gde na ekran da ga učitate</span>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -979,68 +1076,88 @@ export default function App() {
         />
 
         {activeDocument ? (
-          <>
-            {/* Table of Contents Sidebar */}
-            <TOCSidebar
-              toc={toc}
-              activeHeadingId={activeHeadingId}
-              onSelectHeading={handleSelectHeading}
-              isOpen={isTocOpen}
-              onToggle={() => setIsTocOpen(!isTocOpen)}
-              onCopyAnchor={handleCopyAnchor}
+          isSplitScreenActive && documents.length === 2 ? (
+            <SplitScreenContainer
+              docLeft={documents[0]}
+              docRight={documents[1]}
+              onChangeContentLeft={handleChangeContentLeft}
+              onChangeContentRight={handleChangeContentRight}
+              viewMode={viewMode}
+              settings={settings}
+              onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
+              onSwapDocs={handleSwapDocs}
+              isDiffActive={isDiffActive}
+              onToggleDiff={() => setIsDiffActive((prev) => !prev)}
+              searchState={searchState}
+              onUpdateTotalMatches={handleUpdateTotalMatches}
+              onImageClick={handleImageClick}
+              onCopySuccess={() => showToast('Izvorni tekst kopiran!')}
+              onScroll={handleCheckScroll}
             />
-
-            {/* Document Content View based on active mode */}
-            <main className="flex-1 h-full overflow-hidden flex flex-col relative bg-white dark:bg-slate-900/40">
-              {viewMode === 'rendered' && (
-                <RenderedView
-                  scrollContainerRef={renderedScrollRef}
-                  onScroll={handleCheckScroll}
-                  content={activeDocument.content}
-                  settings={settings}
-                  searchState={searchState}
-                  onUpdateTotalMatches={handleUpdateTotalMatches}
-                  onImageClick={handleImageClick}
-                  onHeadingVisible={handleHeadingVisible}
-                />
-              )}
-
-              {viewMode === 'edit' && (
-                <EditorView
-                  ref={editorRef}
-                  content={activeDocument.content}
-                  onChange={handleContentChange}
-                  settings={settings}
-                  onCopySuccess={() => showToast('Izvorni Markdown tekst kopiran!')}
-                  onScroll={handleCheckScroll}
-                  searchState={searchState}
-                  onUpdateTotalMatches={handleUpdateTotalMatches}
-                />
-              )}
-
-              {viewMode === 'split' && (
-                <SplitView
-                  content={activeDocument.content}
-                  onChangeContent={handleContentChange}
-                  settings={settings}
-                  searchState={searchState}
-                  onUpdateTotalMatches={handleUpdateTotalMatches}
-                  onImageClick={handleImageClick}
-                  onCopySuccess={() => showToast('Izvorni tekst kopiran!')}
-                  editorRef={editorRef}
-                  previewScrollRef={splitPreviewScrollRef}
-                  onScroll={handleCheckScroll}
-                  onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
-                />
-              )}
-
-              {/* Scroll to Top Floating Button */}
-              <ScrollToTopButton
-                visible={showScrollTop}
-                onClick={handleScrollToTop}
+          ) : (
+            <>
+              {/* Table of Contents Sidebar */}
+              <TOCSidebar
+                toc={toc}
+                activeHeadingId={activeHeadingId}
+                onSelectHeading={handleSelectHeading}
+                isOpen={isTocOpen}
+                onToggle={() => setIsTocOpen(!isTocOpen)}
+                onCopyAnchor={handleCopyAnchor}
               />
-            </main>
-          </>
+
+              {/* Document Content View based on active mode */}
+              <main className="flex-1 h-full overflow-hidden flex flex-col relative bg-white dark:bg-slate-900/40">
+                {viewMode === 'rendered' && (
+                  <RenderedView
+                    scrollContainerRef={renderedScrollRef}
+                    onScroll={handleCheckScroll}
+                    content={activeDocument.content}
+                    settings={settings}
+                    searchState={searchState}
+                    onUpdateTotalMatches={handleUpdateTotalMatches}
+                    onImageClick={handleImageClick}
+                    onHeadingVisible={handleHeadingVisible}
+                  />
+                )}
+
+                {viewMode === 'edit' && (
+                  <EditorView
+                    ref={editorRef}
+                    content={activeDocument.content}
+                    onChange={handleContentChange}
+                    settings={settings}
+                    onCopySuccess={() => showToast('Izvorni Markdown tekst kopiran!')}
+                    onScroll={handleCheckScroll}
+                    searchState={searchState}
+                    onUpdateTotalMatches={handleUpdateTotalMatches}
+                  />
+                )}
+
+                {viewMode === 'split' && (
+                  <SplitView
+                    content={activeDocument.content}
+                    onChangeContent={handleContentChange}
+                    settings={settings}
+                    searchState={searchState}
+                    onUpdateTotalMatches={handleUpdateTotalMatches}
+                    onImageClick={handleImageClick}
+                    onCopySuccess={() => showToast('Izvorni tekst kopiran!')}
+                    editorRef={editorRef}
+                    previewScrollRef={splitPreviewScrollRef}
+                    onScroll={handleCheckScroll}
+                    onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
+                  />
+                )}
+
+                {/* Scroll to Top Floating Button */}
+                <ScrollToTopButton
+                  visible={showScrollTop}
+                  onClick={handleScrollToTop}
+                />
+              </main>
+            </>
+          )
         ) : (
           /* Empty State when no document is open */
           <EmptyState
@@ -1059,8 +1176,16 @@ export default function App() {
       {/* Bottom Status Bar */}
       {activeDocument && (
         <StatusBar
-          fileName={activeDocument.name}
-          isModified={activeDocument.isModified}
+          fileName={
+            isSplitScreenActive && documents.length === 2
+              ? `${documents[0].name} | ${documents[1].name}`
+              : activeDocument.name
+          }
+          isModified={
+            isSplitScreenActive && documents.length === 2
+              ? documents[0].isModified || documents[1].isModified
+              : activeDocument.isModified
+          }
           stats={stats}
           viewMode={viewMode}
           activeHeading={
@@ -1068,6 +1193,8 @@ export default function App() {
           }
           onOpenAbout={() => setIsAboutOpen(true)}
           onOpenHelp={() => setIsHelpOpen(true)}
+          isSplitScreenActive={isSplitScreenActive && documents.length === 2}
+          isDiffActive={isDiffActive}
         />
       )}
 
@@ -1153,6 +1280,7 @@ export default function App() {
           defaultFilename={activeDocument.name}
           markdown={activeDocument.content}
           documentTitle={activeDocument.name}
+          settings={settings}
           onSuccess={(savedName, method) => {
             if (method === 'picker') {
               showToast(`Dokument uspešno sačuvan kao "${savedName}"!`);

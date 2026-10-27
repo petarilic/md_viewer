@@ -35,6 +35,8 @@ import {
   Scale,
   Info,
   HelpCircle,
+  GitCompare,
+  Split,
 } from 'lucide-react';
 import { ViewMode, Theme, ViewerSettings } from '../types';
 
@@ -73,6 +75,12 @@ interface HeaderToolbarProps {
   onToggleFullscreen: () => void;
   documentTitle: string;
   onRenameDocument?: (newName: string) => void;
+  canSplitScreen?: boolean;
+  isSplitScreenActive?: boolean;
+  onToggleSplitScreen?: () => void;
+  canDiff?: boolean;
+  isDiffActive?: boolean;
+  onToggleDiff?: () => void;
 }
 
 export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
@@ -110,6 +118,12 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onToggleFullscreen,
   documentTitle,
   onRenameDocument,
+  canSplitScreen = false,
+  isSplitScreenActive = false,
+  onToggleSplitScreen,
+  canDiff = false,
+  isDiffActive = false,
+  onToggleDiff,
 }) => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
@@ -379,47 +393,103 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
           </div>
         </div>
 
-        {/* Center: View Mode Switcher (Compact on mobile, labeled on desktop) */}
+        {/* Center: View Mode Switcher + Split Screen Mode & Diff (when 2 docs) */}
         {hasDocument && (
-          <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs">
-            <button
-              onClick={() => onChangeViewMode('edit')}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                viewMode === 'edit'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="Uređivanje teksta (Edit)"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Uredi</span>
-            </button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs">
+              <button
+                onClick={() => onChangeViewMode('edit')}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  viewMode === 'edit'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+                title={
+                  isSplitScreenActive
+                    ? 'Uredi: dva dokumenta jedan pored drugog'
+                    : 'Uređivanje teksta (Edit)'
+                }
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Uredi</span>
+              </button>
 
-            <button
-              onClick={() => onChangeViewMode('rendered')}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                viewMode === 'rendered'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="Formatirani prikaz (Rendered)"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Prikaz</span>
-            </button>
+              <button
+                onClick={() => onChangeViewMode('rendered')}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  viewMode === 'rendered'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+                title={
+                  isSplitScreenActive
+                    ? 'Prikaz: dva dokumenta jedan pored drugog'
+                    : 'Formatirani prikaz (Rendered)'
+                }
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Prikaz</span>
+              </button>
 
-            <button
-              onClick={() => onChangeViewMode('split')}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                viewMode === 'split'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="Podeljeni prikaz (Split)"
-            >
-              <Columns className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Podeljeno</span>
-            </button>
+              <button
+                onClick={() => onChangeViewMode('split')}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  viewMode === 'split'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+                title={
+                  isSplitScreenActive
+                    ? 'Podeljeno: dva dokumenta jedan ispod drugog'
+                    : 'Podeljeni prikaz (Split)'
+                }
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Podeljeno</span>
+              </button>
+            </div>
+
+            {/* Split Screen Mode button: appears ONLY when exactly two documents are open */}
+            {canSplitScreen && (
+              <button
+                type="button"
+                onClick={onToggleSplitScreen}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs ${
+                  isSplitScreenActive
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white ring-2 ring-indigo-400/80 ring-offset-1 dark:ring-offset-slate-900'
+                    : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                }`}
+                title={
+                  isSplitScreenActive
+                    ? 'Isključi Split Screen Mode'
+                    : 'Aktiviraj Split Screen Mode (istovremeni rad sa 2 dokumenta)'
+                }
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Split Screen Mode</span>
+                <span className="md:hidden">Split 2</span>
+                {isSplitScreenActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+                )}
+              </button>
+            )}
+
+            {/* Diff option: appears ONLY if 2 documents are loaded and Split Screen Mode is active */}
+            {canDiff && (
+              <button
+                type="button"
+                onClick={onToggleDiff}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs ${
+                  isDiffActive
+                    ? 'bg-violet-600 hover:bg-violet-700 text-white ring-2 ring-violet-400/80 ring-offset-1 dark:ring-offset-slate-900'
+                    : 'bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 dark:hover:bg-violet-900/80 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800'
+                }`}
+                title="Poređenje dva dokumenta i označavanje razlika (Diff)"
+              >
+                <GitCompare className="w-3.5 h-3.5" />
+                <span>Diff</span>
+              </button>
+            )}
           </div>
         )}
 
