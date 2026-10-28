@@ -11,6 +11,9 @@ interface RenderedViewProps {
   onHeadingVisible?: (headingId: string) => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  diffLineStatus?: Map<number, { type: 'added' | 'removed' | 'modified'; diffItemId: string }>;
+  selectedDiffId?: string | null;
+  onSelectDiff?: (diffId: string) => void;
 }
 
 export const RenderedView: React.FC<RenderedViewProps> = ({
@@ -22,21 +25,32 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
   onHeadingVisible,
   scrollContainerRef,
   onScroll,
+  diffLineStatus,
+  selectedDiffId,
+  onSelectDiff,
 }) => {
   const localContainerRef = useRef<HTMLDivElement>(null);
   const outerScrollRef = scrollContainerRef || localContainerRef;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Generate clean rendered HTML
+  // Generate clean rendered HTML with optional diff markup
   const rawHtml = useMemo(() => {
-    return renderMarkdownToHtml(content, settings.showLineNumbersInCode);
-  }, [content, settings.showLineNumbersInCode]);
+    return renderMarkdownToHtml(
+      content,
+      settings.showLineNumbersInCode,
+      diffLineStatus,
+      selectedDiffId
+    );
+  }, [content, settings.showLineNumbersInCode, diffLineStatus, selectedDiffId]);
 
   const onImageClickRef = useRef(onImageClick);
   onImageClickRef.current = onImageClick;
 
   const onHeadingVisibleRef = useRef(onHeadingVisible);
   onHeadingVisibleRef.current = onHeadingVisible;
+
+  const onSelectDiffRef = useRef(onSelectDiff);
+  onSelectDiffRef.current = onSelectDiff;
 
   // Set rendered content
   useEffect(() => {
@@ -76,7 +90,31 @@ export const RenderedView: React.FC<RenderedViewProps> = ({
         }
       });
     });
+
+    // Attach click listeners for diff blocks
+    const diffBlocks = containerRef.current.querySelectorAll('.diff-rendered-block');
+    diffBlocks.forEach((block) => {
+      block.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('.copy-code-btn') || target.closest('.md-preview-img')) return;
+        const diffId = block.getAttribute('data-diff-id');
+        if (diffId && onSelectDiffRef.current) {
+          onSelectDiffRef.current(diffId);
+        }
+      });
+    });
   }, [rawHtml]);
+
+  // Auto-scroll to selected diff element when active in diff mode
+  useEffect(() => {
+    if (!selectedDiffId || !containerRef.current) return;
+    const targetEl = containerRef.current.querySelector(
+      `[data-diff-id="${selectedDiffId}"]`
+    ) as HTMLElement | null;
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [selectedDiffId]);
 
   const lastHeadingRef = useRef<string | null>(null);
 

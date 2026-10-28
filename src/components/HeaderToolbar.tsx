@@ -415,23 +415,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
               </button>
 
               <button
-                onClick={() => onChangeViewMode('rendered')}
-                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                  viewMode === 'rendered'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-                title={
-                  isSplitScreenActive
-                    ? 'Prikaz: dva dokumenta jedan pored drugog'
-                    : 'Formatirani prikaz (Rendered)'
-                }
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Prikaz</span>
-              </button>
-
-              <button
                 onClick={() => onChangeViewMode('split')}
                 className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
                   viewMode === 'split'
@@ -446,6 +429,23 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
               >
                 <Columns className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Podeljeno</span>
+              </button>
+
+              <button
+                onClick={() => onChangeViewMode('rendered')}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  viewMode === 'rendered'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+                title={
+                  isSplitScreenActive
+                    ? 'Prikaz: dva dokumenta jedan pored drugog'
+                    : 'Formatirani prikaz (Rendered)'
+                }
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Prikaz</span>
               </button>
             </div>
 

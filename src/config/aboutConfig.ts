@@ -47,6 +47,7 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
       date: '27. oktobar 2026',
       highlights: [
         '[Nova funkcija] Split Screen Mode za dva otvorena dokumenta: omogućava istovremeni pregled i rad sa dva različita fajla na jednom ekranu (dugme se automatski pojavljuje isključivo kada su učitana tačno dva dokumenta)',
+        '[Poboljšanje] U opciji "Podeljeno" unutar Split Screen Mode-a dokumenti se prikazuju jedan ispod drugog, a u okviru svakog dokumenta prikazan je Markdown editor paralelno pored formatiranog prikaza (paralelni SplitView za oba dokumenta)',
         '[Nova funkcija] Fleksibilan raspored u Split Screen Mode-u: opcije "Uredi" i "Prikaz" prikazuju dokumente jedan pored drugog (side-by-side), dok opcija "Podeljeno" prikazuje dokumente jedan ispod drugog (stacked)',
         '[Nova funkcija] Diff alat za analizu i poređenje: automatsko pronalaženje razlika između levog i desnog dokumenta uz navođenje tačnog broja linije i uporednih vrednosti (levi protiv desnog)',
         '[Nova funkcija] Kolor-kodirano markiranje razlika u dokumentima: vizuelno istaknute linije (zelena za dodavanja u desnom dokumentu, crvena za uklanjanja iz levog dokumenta, ćilibar/žuta za izmenjene linije) uz interaktivnu listu razlika i brzu navigaciju',
@@ -54,6 +55,9 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
         '[Nova funkcija] Brza zamena mesta dokumentima (Levo <-> Desno) i sinhronizovano skrolovanje u Split Screen prikazu',
         '[Nova funkcija] Drag & Drop učitavanje fajlova direktno na traku sa tabovima sa namenskim isprekidanim pravougaonikom za spuštanje i otvaranje pored već otvorenih dokumenata',
         '[Nova funkcija] Izvoz u DOCX i PDF sada verno reflektuje izabranu veličinu fonta, tipografiju i širinu stranice (margine) iz podešavanja',
+        '[Ispravka] Otklonjen problem sa sinhronizovanim skrolovanjem u Split Screen Mode-u: implementirano precizno, proporcionalno i dvosmerno sinhronizovano skrolovanje između otvorenih dokumenata u svim režimima (uključujući složeni vertikalni "Podeljeno" raspored sa 4 paralelna panela)',
+        '[Ispravka] Otklonjen problem sa prikazom razlika u Formatiranom prikazu: kada je uključen Diff u Split Screen Mode-u, razlike su sada jasno markirane i kolor-kodirane i u formatiranom tekstu (zeleno za dodavanja u desnom dokumentu, crveno za uklanjanja iz levog, ćilibar za izmene) sa bedževima linija, automatskim skrolovanjem na selekciju i interaktivnim klikom, u oba režima („Prikaz” i „Podeljeno”)',
+        '[Poboljšanje] Prilagođen redosled opcija prikaza u traci sa alatkama: dugmad režima su sada poređana redom „Uredi”, „Podeljeno”, „Prikaz”',
       ],
     },
     {

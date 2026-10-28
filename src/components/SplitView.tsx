@@ -15,7 +15,11 @@ interface SplitViewProps {
   editorRef?: React.RefObject<EditorViewRef | null>;
   previewScrollRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: () => void;
+  onScrollRatio?: (ratio: number, source: 'editor' | 'preview') => void;
   onUpdateSettings?: (newSettings: Partial<ViewerSettings>) => void;
+  diffLineStatus?: Map<number, { type: 'added' | 'removed' | 'modified'; diffItemId: string }>;
+  selectedDiffId?: string | null;
+  onSelectDiff?: (diffId: string) => void;
 }
 
 export const SplitView: React.FC<SplitViewProps> = ({
@@ -29,7 +33,11 @@ export const SplitView: React.FC<SplitViewProps> = ({
   editorRef,
   previewScrollRef,
   onScroll,
+  onScrollRatio,
   onUpdateSettings,
+  diffLineStatus,
+  selectedDiffId,
+  onSelectDiff,
 }) => {
   const localPreviewScrollRef = useRef<HTMLDivElement>(null);
   const actualPreviewScrollRef = previewScrollRef || localPreviewScrollRef;
@@ -61,40 +69,44 @@ export const SplitView: React.FC<SplitViewProps> = ({
   // Handle scroll originating from markdown editor
   const handleEditorScroll = useCallback(() => {
     onScroll?.();
-    if (!settings.syncScroll) return;
-    if (isSyncingRef.current && activeDriverRef.current === 'preview') return;
-
     const editorEl = editorRef?.current?.getTextarea?.();
     const previewEl = actualPreviewScrollRef.current;
-    if (!editorEl || !previewEl) return;
+    if (!editorEl) return;
+
+    const ratio = getScrollRatio(editorEl);
+    onScrollRatio?.(ratio, 'editor');
+
+    if (!settings.syncScroll || !previewEl) return;
+    if (isSyncingRef.current && activeDriverRef.current === 'preview') return;
 
     activeDriverRef.current = 'editor';
     isSyncingRef.current = true;
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
-    const ratio = getScrollRatio(editorEl);
     setScrollByRatio(previewEl, ratio);
 
     syncTimeoutRef.current = setTimeout(() => {
       isSyncingRef.current = false;
     }, 70);
-  }, [settings.syncScroll, editorRef, actualPreviewScrollRef, onScroll]);
+  }, [settings.syncScroll, editorRef, actualPreviewScrollRef, onScroll, onScrollRatio]);
 
   // Handle scroll originating from rendered HTML preview
   const handlePreviewScroll = useCallback(() => {
     onScroll?.();
-    if (!settings.syncScroll) return;
-    if (isSyncingRef.current && activeDriverRef.current === 'editor') return;
-
     const editorEl = editorRef?.current?.getTextarea?.();
     const previewEl = actualPreviewScrollRef.current;
-    if (!editorEl || !previewEl) return;
+    if (!previewEl) return;
+
+    const ratio = getScrollRatio(previewEl);
+    onScrollRatio?.(ratio, 'preview');
+
+    if (!settings.syncScroll || !editorEl) return;
+    if (isSyncingRef.current && activeDriverRef.current === 'editor') return;
 
     activeDriverRef.current = 'preview';
     isSyncingRef.current = true;
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
-    const ratio = getScrollRatio(previewEl);
     if (editorRef?.current?.setScrollTop) {
       const maxScroll = editorEl.scrollHeight - editorEl.clientHeight;
       editorRef.current.setScrollTop(maxScroll > 0 ? Math.round(ratio * maxScroll) : 0);
@@ -105,7 +117,7 @@ export const SplitView: React.FC<SplitViewProps> = ({
     syncTimeoutRef.current = setTimeout(() => {
       isSyncingRef.current = false;
     }, 70);
-  }, [settings.syncScroll, editorRef, actualPreviewScrollRef, onScroll]);
+  }, [settings.syncScroll, editorRef, actualPreviewScrollRef, onScroll, onScrollRatio]);
 
   // When syncScroll option is enabled or toggled ON, align preview to editor
   useEffect(() => {
@@ -142,6 +154,8 @@ export const SplitView: React.FC<SplitViewProps> = ({
           onCopySuccess={onCopySuccess}
           onScroll={handleEditorScroll}
           searchState={searchState}
+          diffLineStatus={diffLineStatus}
+          selectedDiffId={selectedDiffId}
         />
       </div>
 
@@ -198,6 +212,9 @@ export const SplitView: React.FC<SplitViewProps> = ({
             searchState={searchState}
             onUpdateTotalMatches={onUpdateTotalMatches}
             onImageClick={onImageClick}
+            diffLineStatus={diffLineStatus}
+            selectedDiffId={selectedDiffId}
+            onSelectDiff={onSelectDiff}
           />
         </div>
       </div>

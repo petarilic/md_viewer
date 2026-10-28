@@ -1,12 +1,9 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   ArrowLeftRight,
   Link2,
   Unlink,
   GitCompare,
-  FileText,
-  Eye,
-  Edit3,
   Columns,
   Layers,
   TableProperties,
@@ -14,6 +11,7 @@ import {
 import { DocumentItem, ViewerSettings, ViewMode, SearchState } from '../types';
 import { EditorView, EditorViewRef } from './EditorView';
 import { RenderedView } from './RenderedView';
+import { SplitView } from './SplitView';
 import { compareDocuments, DiffItem, DiffResult } from '../utils/diff';
 import { DiffInspector } from './DiffInspector';
 import { DiffAlignedView } from './DiffAlignedView';
@@ -57,16 +55,39 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
   const [syncScroll, setSyncScroll] = useState(true);
   const [diffViewStyle, setDiffViewStyle] = useState<'standard' | 'aligned'>('standard');
 
-  // Sub-view toggles for vertically stacked 'split' mode
-  const [paneTopMode, setPaneTopMode] = useState<'rendered' | 'edit'>('rendered');
-  const [paneBottomMode, setPaneBottomMode] = useState<'rendered' | 'edit'>('rendered');
-
-  // References for scrolling
+  // References for horizontal scrolling (viewMode === 'edit' or 'rendered')
   const leftEditorRef = useRef<EditorViewRef>(null);
   const rightEditorRef = useRef<EditorViewRef>(null);
   const leftRenderedScrollRef = useRef<HTMLDivElement>(null);
   const rightRenderedScrollRef = useRef<HTMLDivElement>(null);
+
+  // References for stacked split scrolling (viewMode === 'split')
+  const topEditorRef = useRef<EditorViewRef>(null);
+  const topPreviewScrollRef = useRef<HTMLDivElement>(null);
+  const bottomEditorRef = useRef<EditorViewRef>(null);
+  const bottomPreviewScrollRef = useRef<HTMLDivElement>(null);
+
+  // Active scroll driver: 'left' | 'right' | 'top' | 'bottom'
+  const activeDriverRef = useRef<'left' | 'right' | 'top' | 'bottom' | null>(null);
   const isSyncingScrollRef = useRef(false);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Helper to compute scroll ratio (0 to 1)
+  const getScrollRatio = (el: HTMLElement | null | undefined): number => {
+    if (!el) return 0;
+    const max = el.scrollHeight - el.clientHeight;
+    if (max <= 0) return 0;
+    return Math.max(0, Math.min(1, el.scrollTop / max));
+  };
+
+  // Helper to apply scroll ratio (0 to 1)
+  const setScrollRatio = (el: HTMLElement | null | undefined, ratio: number) => {
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    if (max > 0) {
+      el.scrollTop = Math.round(ratio * max);
+    }
+  };
 
   // Compute Diff between Left and Right document
   const diffResult: DiffResult = useMemo(() => {
@@ -74,6 +95,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
   }, [docLeft.content, docRight.content]);
 
   // Handle Diff selection and auto-scroll to line
+  // Handle Diff selection and auto-scroll to line / element
   const handleSelectDiff = useCallback(
     (diffId: string, item: DiffItem) => {
       setSelectedDiffId(diffId);
@@ -87,59 +109,194 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
           editor.setScrollTop(targetScroll);
         }
         if (container) {
-          try {
-            container.scrollTo({ top: targetScroll, behavior: 'smooth' });
-          } catch {
-            container.scrollTop = targetScroll;
+          const diffEl = container.querySelector(`[data-diff-id="${diffId}"]`) as HTMLElement | null;
+          if (diffEl) {
+            diffEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            try {
+              container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+            } catch {
+              container.scrollTop = targetScroll;
+            }
           }
         }
       };
 
-      // Scroll left side
-      if (item.leftLineNumber) {
-        scrollToLine(item.leftLineNumber, leftEditorRef.current, leftRenderedScrollRef.current);
-      }
-      // Scroll right side
-      if (item.rightLineNumber) {
-        scrollToLine(item.rightLineNumber, rightEditorRef.current, rightRenderedScrollRef.current);
+      if (viewMode === 'split') {
+        if (item.leftLineNumber) {
+          scrollToLine(item.leftLineNumber, topEditorRef.current, topPreviewScrollRef.current);
+        }
+        if (item.rightLineNumber) {
+          scrollToLine(item.rightLineNumber, bottomEditorRef.current, bottomPreviewScrollRef.current);
+        }
+      } else {
+        if (item.leftLineNumber) {
+          scrollToLine(item.leftLineNumber, leftEditorRef.current, leftRenderedScrollRef.current);
+        }
+        if (item.rightLineNumber) {
+          scrollToLine(item.rightLineNumber, rightEditorRef.current, rightRenderedScrollRef.current);
+        }
       }
     },
-    []
+    [viewMode]
   );
 
-  // Proportional scroll synchronization between Left and Right panes
-  const handlePaneScroll = useCallback(
-    (source: 'left' | 'right') => {
+  const handleDiffClick = useCallback(
+    (diffId: string) => {
+      setSelectedDiffId(diffId);
+      const found = diffResult.items.find((it) => it.id === diffId);
+      if (found) {
+        handleSelectDiff(diffId, found);
+      }
+    },
+    [diffResult.items, handleSelectDiff]
+  );
+
+  // Scroll handler for Top document in stacked 'split' mode
+  const handleTopSplitScrollRatio = useCallback(
+    (ratio: number) => {
       onScroll?.();
-      if (!syncScroll || isSyncingScrollRef.current) return;
+      if (!syncScroll) return;
+      if (isSyncingScrollRef.current && activeDriverRef.current === 'bottom') return;
 
-      const getElement = (side: 'left' | 'right'): HTMLElement | null => {
-        if (viewMode === 'edit') {
-          return (side === 'left' ? leftEditorRef : rightEditorRef).current?.getTextarea() || null;
-        }
-        return (side === 'left' ? leftRenderedScrollRef : rightRenderedScrollRef).current;
-      };
-
-      const sourceEl = getElement(source);
-      const targetEl = getElement(source === 'left' ? 'right' : 'left');
-
-      if (!sourceEl || !targetEl) return;
-
+      activeDriverRef.current = 'top';
       isSyncingScrollRef.current = true;
-      const maxSource = sourceEl.scrollHeight - sourceEl.clientHeight;
-      const maxTarget = targetEl.scrollHeight - targetEl.clientHeight;
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
-      if (maxSource > 0 && maxTarget > 0) {
-        const ratio = sourceEl.scrollTop / maxSource;
-        targetEl.scrollTop = Math.round(ratio * maxTarget);
+      const bEditor = bottomEditorRef.current?.getTextarea();
+      const bPreview = bottomPreviewScrollRef.current;
+      if (bEditor) setScrollRatio(bEditor, ratio);
+      if (bPreview) setScrollRatio(bPreview, ratio);
+
+      syncTimeoutRef.current = setTimeout(() => {
+        isSyncingScrollRef.current = false;
+      }, 70);
+    },
+    [syncScroll, onScroll]
+  );
+
+  // Scroll handler for Bottom document in stacked 'split' mode
+  const handleBottomSplitScrollRatio = useCallback(
+    (ratio: number) => {
+      onScroll?.();
+      if (!syncScroll) return;
+      if (isSyncingScrollRef.current && activeDriverRef.current === 'top') return;
+
+      activeDriverRef.current = 'bottom';
+      isSyncingScrollRef.current = true;
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+
+      const tEditor = topEditorRef.current?.getTextarea();
+      const tPreview = topPreviewScrollRef.current;
+      if (tEditor) setScrollRatio(tEditor, ratio);
+      if (tPreview) setScrollRatio(tPreview, ratio);
+
+      syncTimeoutRef.current = setTimeout(() => {
+        isSyncingScrollRef.current = false;
+      }, 70);
+    },
+    [syncScroll, onScroll]
+  );
+
+  // Proportional scroll synchronization between Left and Right panes in horizontal mode
+  const handleHorizontalScroll = useCallback(
+    (side: 'left' | 'right') => {
+      onScroll?.();
+      if (!syncScroll) return;
+      const opposite = side === 'left' ? 'right' : 'left';
+      if (isSyncingScrollRef.current && activeDriverRef.current === opposite) return;
+
+      activeDriverRef.current = side;
+      isSyncingScrollRef.current = true;
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+
+      if (viewMode === 'edit') {
+        const sourceEl = (side === 'left' ? leftEditorRef : rightEditorRef).current?.getTextarea();
+        const targetEl = (side === 'left' ? rightEditorRef : leftEditorRef).current?.getTextarea();
+        if (sourceEl && targetEl) {
+          const ratio = getScrollRatio(sourceEl);
+          setScrollRatio(targetEl, ratio);
+        }
+      } else if (viewMode === 'rendered') {
+        const sourceEl = (side === 'left' ? leftRenderedScrollRef : rightRenderedScrollRef).current;
+        const targetEl = (side === 'left' ? rightRenderedScrollRef : leftRenderedScrollRef).current;
+        if (sourceEl && targetEl) {
+          const ratio = getScrollRatio(sourceEl);
+          setScrollRatio(targetEl, ratio);
+        }
       }
 
-      setTimeout(() => {
+      syncTimeoutRef.current = setTimeout(() => {
         isSyncingScrollRef.current = false;
-      }, 50);
+      }, 70);
     },
     [syncScroll, viewMode, onScroll]
   );
+
+  // Toggle sync scroll and immediately align views
+  const handleToggleSyncScroll = () => {
+    const next = !syncScroll;
+    setSyncScroll(next);
+    if (next) {
+      if (viewMode === 'split') {
+        const tEditor = topEditorRef.current?.getTextarea();
+        const tPreview = topPreviewScrollRef.current;
+        const ratio = getScrollRatio(tEditor) || getScrollRatio(tPreview);
+        const bEditor = bottomEditorRef.current?.getTextarea();
+        const bPreview = bottomPreviewScrollRef.current;
+        if (bEditor) setScrollRatio(bEditor, ratio);
+        if (bPreview) setScrollRatio(bPreview, ratio);
+      } else if (viewMode === 'edit') {
+        const leftEl = leftEditorRef.current?.getTextarea();
+        const rightEl = rightEditorRef.current?.getTextarea();
+        if (leftEl && rightEl) {
+          setScrollRatio(rightEl, getScrollRatio(leftEl));
+        }
+      } else if (viewMode === 'rendered') {
+        const leftEl = leftRenderedScrollRef.current;
+        const rightEl = rightRenderedScrollRef.current;
+        if (leftEl && rightEl) {
+          setScrollRatio(rightEl, getScrollRatio(leftEl));
+        }
+      }
+    }
+  };
+
+  // Align scroll positions when mode changes if syncScroll is active
+  useEffect(() => {
+    if (!syncScroll) return;
+    const timer = setTimeout(() => {
+      if (viewMode === 'split') {
+        const tEditor = topEditorRef.current?.getTextarea();
+        const tPreview = topPreviewScrollRef.current;
+        const ratio = getScrollRatio(tEditor) || getScrollRatio(tPreview);
+        const bEditor = bottomEditorRef.current?.getTextarea();
+        const bPreview = bottomPreviewScrollRef.current;
+        if (bEditor) setScrollRatio(bEditor, ratio);
+        if (bPreview) setScrollRatio(bPreview, ratio);
+      } else if (viewMode === 'edit') {
+        const leftEl = leftEditorRef.current?.getTextarea();
+        const rightEl = rightEditorRef.current?.getTextarea();
+        if (leftEl && rightEl) {
+          setScrollRatio(rightEl, getScrollRatio(leftEl));
+        }
+      } else if (viewMode === 'rendered') {
+        const leftEl = leftRenderedScrollRef.current;
+        const rightEl = rightRenderedScrollRef.current;
+        if (leftEl && rightEl) {
+          setScrollRatio(rightEl, getScrollRatio(leftEl));
+        }
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [viewMode, syncScroll]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, []);
 
   // Layout decision based on viewMode:
   // "opcije 'Uredi' i 'Prikaz' prikazuju dokumenta jedan pored drugog, dok opcija 'Podeljeno' prikazuje dokumente jedan ispod drugog."
@@ -210,13 +367,17 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
           {/* Sync scroll toggle */}
           <button
             type="button"
-            onClick={() => setSyncScroll(!syncScroll)}
+            onClick={handleToggleSyncScroll}
             className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
               syncScroll
                 ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800'
                 : 'border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800'
             }`}
-            title={syncScroll ? 'Sinhronizovano skrolovanje je uključeno' : 'Uključi sinhronizovano skrolovanje'}
+            title={
+              syncScroll
+                ? 'Sinhronizovano skrolovanje je UKLJUČENO (kliknite za isključivanje)'
+                : 'Sinhronizovano skrolovanje je ISKLJUČENO (kliknite za uključivanje)'
+            }
           >
             {syncScroll ? <Link2 className="w-3 h-3" /> : <Unlink className="w-3 h-3" />}
             <span className="hidden sm:inline">{syncScroll ? 'Sinhronizovano' : 'Nezavisno'}</span>
@@ -268,7 +429,21 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
           /* =================================================================== */
           <div className="flex flex-row h-full w-full overflow-hidden">
             {/* LEFT PANE (Document 1) */}
-            <div className="flex-1 h-full min-w-0 border-r border-slate-200 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40">
+            <div
+              onMouseEnter={() => {
+                activeDriverRef.current = 'left';
+                isSyncingScrollRef.current = false;
+              }}
+              onTouchStart={() => {
+                activeDriverRef.current = 'left';
+                isSyncingScrollRef.current = false;
+              }}
+              onWheel={() => {
+                activeDriverRef.current = 'left';
+                isSyncingScrollRef.current = false;
+              }}
+              className="flex-1 h-full min-w-0 border-r border-slate-200 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40"
+            >
               {/* Left Pane Header */}
               <div className="h-7 px-3 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -293,10 +468,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
               </div>
 
               {/* Left Content View */}
-              <div
-                className="flex-1 h-full overflow-hidden flex flex-col relative"
-                onScroll={() => handlePaneScroll('left')}
-              >
+              <div className="flex-1 h-full overflow-hidden flex flex-col relative">
                 {viewMode === 'edit' ? (
                   <EditorView
                     ref={leftEditorRef}
@@ -304,7 +476,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                     onChange={onChangeContentLeft}
                     settings={settings}
                     onCopySuccess={onCopySuccess}
-                    onScroll={() => handlePaneScroll('left')}
+                    onScroll={() => handleHorizontalScroll('left')}
                     searchState={searchState}
                     onUpdateTotalMatches={onUpdateTotalMatches}
                     diffLineStatus={isDiffActive ? diffResult.leftLineStatus : undefined}
@@ -318,14 +490,31 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                     searchState={searchState}
                     onUpdateTotalMatches={onUpdateTotalMatches || (() => {})}
                     onImageClick={onImageClick}
-                    onScroll={() => handlePaneScroll('left')}
+                    onScroll={() => handleHorizontalScroll('left')}
+                    diffLineStatus={isDiffActive ? diffResult.leftLineStatus : undefined}
+                    selectedDiffId={isDiffActive ? selectedDiffId : null}
+                    onSelectDiff={handleDiffClick}
                   />
                 )}
               </div>
             </div>
 
             {/* RIGHT PANE (Document 2) */}
-            <div className="flex-1 h-full min-w-0 flex flex-col relative bg-white dark:bg-slate-900/40">
+            <div
+              onMouseEnter={() => {
+                activeDriverRef.current = 'right';
+                isSyncingScrollRef.current = false;
+              }}
+              onTouchStart={() => {
+                activeDriverRef.current = 'right';
+                isSyncingScrollRef.current = false;
+              }}
+              onWheel={() => {
+                activeDriverRef.current = 'right';
+                isSyncingScrollRef.current = false;
+              }}
+              className="flex-1 h-full min-w-0 flex flex-col relative bg-white dark:bg-slate-900/40"
+            >
               {/* Right Pane Header */}
               <div className="h-7 px-3 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -350,10 +539,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
               </div>
 
               {/* Right Content View */}
-              <div
-                className="flex-1 h-full overflow-hidden flex flex-col relative"
-                onScroll={() => handlePaneScroll('right')}
-              >
+              <div className="flex-1 h-full overflow-hidden flex flex-col relative">
                 {viewMode === 'edit' ? (
                   <EditorView
                     ref={rightEditorRef}
@@ -361,7 +547,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                     onChange={onChangeContentRight}
                     settings={settings}
                     onCopySuccess={onCopySuccess}
-                    onScroll={() => handlePaneScroll('right')}
+                    onScroll={() => handleHorizontalScroll('right')}
                     searchState={searchState}
                     onUpdateTotalMatches={onUpdateTotalMatches}
                     diffLineStatus={isDiffActive ? diffResult.rightLineStatus : undefined}
@@ -375,7 +561,10 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                     searchState={searchState}
                     onUpdateTotalMatches={onUpdateTotalMatches || (() => {})}
                     onImageClick={onImageClick}
-                    onScroll={() => handlePaneScroll('right')}
+                    onScroll={() => handleHorizontalScroll('right')}
+                    diffLineStatus={isDiffActive ? diffResult.rightLineStatus : undefined}
+                    selectedDiffId={isDiffActive ? selectedDiffId : null}
+                    onSelectDiff={handleDiffClick}
                   />
                 )}
               </div>
@@ -386,8 +575,22 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
           /* STACKED (VERTICAL) LAYOUT for "Podeljeno" (Split)                   */
           /* =================================================================== */
           <div className="flex flex-col h-full w-full overflow-hidden">
-            {/* TOP PANE (Document 1) */}
-            <div className="flex-1 w-full min-h-0 border-b border-slate-200 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40">
+            {/* TOP PANE (Document 1) - SplitView: Markdown editor on the left + Rendered preview on the right */}
+            <div
+              onMouseEnter={() => {
+                activeDriverRef.current = 'top';
+                isSyncingScrollRef.current = false;
+              }}
+              onTouchStart={() => {
+                activeDriverRef.current = 'top';
+                isSyncingScrollRef.current = false;
+              }}
+              onWheel={() => {
+                activeDriverRef.current = 'top';
+                isSyncingScrollRef.current = false;
+              }}
+              className="flex-1 w-full min-h-0 border-b-2 border-slate-300 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40"
+            >
               {/* Top Pane Header */}
               <div className="h-7 px-3 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -398,70 +601,59 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                   {docLeft.isModified && (
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Nesačuvano" />
                   )}
-                  <span className="text-[10px] font-mono text-slate-400">(Gornji panel)</span>
+                  <span className="text-[10px] font-mono text-slate-400">(Gornji dokument)</span>
                 </div>
 
-                {/* Sub-view toggle for top pane */}
-                <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => setPaneTopMode('rendered')}
-                    className={`px-1.5 py-0.5 rounded ${
-                      paneTopMode === 'rendered'
-                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-medium shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Prikaz
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaneTopMode('edit')}
-                    className={`px-1.5 py-0.5 rounded ${
-                      paneTopMode === 'edit'
-                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-medium shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Uredi
-                  </button>
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 shrink-0">
+                  {isDiffActive && (
+                    <span className="px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-semibold">
+                      - Levi
+                    </span>
+                  )}
+                  <span className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                    Markdown pored prikaza
+                  </span>
                 </div>
               </div>
 
-              {/* Top Content View */}
-              <div
-                className="flex-1 h-full overflow-hidden flex flex-col relative"
-                onScroll={() => handlePaneScroll('left')}
-              >
-                {paneTopMode === 'edit' ? (
-                  <EditorView
-                    ref={leftEditorRef}
-                    content={docLeft.content}
-                    onChange={onChangeContentLeft}
-                    settings={settings}
-                    onCopySuccess={onCopySuccess}
-                    onScroll={() => handlePaneScroll('left')}
-                    searchState={searchState}
-                    onUpdateTotalMatches={onUpdateTotalMatches}
-                    diffLineStatus={isDiffActive ? diffResult.leftLineStatus : undefined}
-                    selectedDiffId={isDiffActive ? selectedDiffId : null}
-                  />
-                ) : (
-                  <RenderedView
-                    scrollContainerRef={leftRenderedScrollRef}
-                    content={docLeft.content}
-                    settings={settings}
-                    searchState={searchState}
-                    onUpdateTotalMatches={onUpdateTotalMatches || (() => {})}
-                    onImageClick={onImageClick}
-                    onScroll={() => handlePaneScroll('left')}
-                  />
-                )}
+              {/* Top Content View: Markdown Editor + Rendered Preview side-by-side */}
+              <div className="flex-1 h-full overflow-hidden flex flex-col relative">
+                <SplitView
+                  editorRef={topEditorRef}
+                  previewScrollRef={topPreviewScrollRef}
+                  content={docLeft.content}
+                  onChangeContent={onChangeContentLeft}
+                  settings={settings}
+                  onUpdateSettings={onUpdateSettings}
+                  onCopySuccess={onCopySuccess}
+                  searchState={searchState}
+                  onUpdateTotalMatches={onUpdateTotalMatches || (() => {})}
+                  onImageClick={onImageClick}
+                  diffLineStatus={isDiffActive ? diffResult.leftLineStatus : undefined}
+                  selectedDiffId={isDiffActive ? selectedDiffId : null}
+                  onSelectDiff={handleDiffClick}
+                  onScroll={onScroll}
+                  onScrollRatio={handleTopSplitScrollRatio}
+                />
               </div>
             </div>
 
-            {/* BOTTOM PANE (Document 2) */}
-            <div className="flex-1 w-full min-h-0 flex flex-col relative bg-white dark:bg-slate-900/40">
+            {/* BOTTOM PANE (Document 2) - SplitView: Markdown editor on the left + Rendered preview on the right */}
+            <div
+              onMouseEnter={() => {
+                activeDriverRef.current = 'bottom';
+                isSyncingScrollRef.current = false;
+              }}
+              onTouchStart={() => {
+                activeDriverRef.current = 'bottom';
+                isSyncingScrollRef.current = false;
+              }}
+              onWheel={() => {
+                activeDriverRef.current = 'bottom';
+                isSyncingScrollRef.current = false;
+              }}
+              className="flex-1 w-full min-h-0 flex flex-col relative bg-white dark:bg-slate-900/40"
+            >
               {/* Bottom Pane Header */}
               <div className="h-7 px-3 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -472,65 +664,40 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                   {docRight.isModified && (
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Nesačuvano" />
                   )}
-                  <span className="text-[10px] font-mono text-slate-400">(Donji panel)</span>
+                  <span className="text-[10px] font-mono text-slate-400">(Donji dokument)</span>
                 </div>
 
-                {/* Sub-view toggle for bottom pane */}
-                <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800 p-0.5 rounded text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => setPaneBottomMode('rendered')}
-                    className={`px-1.5 py-0.5 rounded ${
-                      paneBottomMode === 'rendered'
-                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-medium shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Prikaz
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaneBottomMode('edit')}
-                    className={`px-1.5 py-0.5 rounded ${
-                      paneBottomMode === 'edit'
-                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-medium shadow-xs'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Uredi
-                  </button>
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 shrink-0">
+                  {isDiffActive && (
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold">
+                      + Desni
+                    </span>
+                  )}
+                  <span className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                    Markdown pored prikaza
+                  </span>
                 </div>
               </div>
 
-              {/* Bottom Content View */}
-              <div
-                className="flex-1 h-full overflow-hidden flex flex-col relative"
-                onScroll={() => handlePaneScroll('right')}
-              >
-                {paneBottomMode === 'edit' ? (
-                  <EditorView
-                    ref={rightEditorRef}
-                    content={docRight.content}
-                    onChange={onChangeContentRight}
-                    settings={settings}
-                    onCopySuccess={onCopySuccess}
-                    onScroll={() => handlePaneScroll('right')}
-                    searchState={searchState}
-                    onUpdateTotalMatches={onUpdateTotalMatches}
-                    diffLineStatus={isDiffActive ? diffResult.rightLineStatus : undefined}
-                    selectedDiffId={isDiffActive ? selectedDiffId : null}
-                  />
-                ) : (
-                  <RenderedView
-                    scrollContainerRef={rightRenderedScrollRef}
-                    content={docRight.content}
-                    settings={settings}
-                    searchState={searchState}
-                    onUpdateTotalMatches={onUpdateTotalMatches || (() => {})}
-                    onImageClick={onImageClick}
-                    onScroll={() => handlePaneScroll('right')}
-                  />
-                )}
+              {/* Bottom Content View: Markdown Editor + Rendered Preview side-by-side */}
+              <div className="flex-1 h-full overflow-hidden flex flex-col relative">
+                <SplitView
+                  editorRef={bottomEditorRef}
+                  previewScrollRef={bottomPreviewScrollRef}
+                  content={docRight.content}
+                  onChangeContent={onChangeContentRight}
+                  settings={settings}
+                  onUpdateSettings={onUpdateSettings}
+                  onCopySuccess={onCopySuccess}
+                  searchState={searchState}
+                  onUpdateTotalMatches={onUpdateTotalMatches || (() => {})}
+                  onImageClick={onImageClick}
+                  diffLineStatus={isDiffActive ? diffResult.rightLineStatus : undefined}
+                  selectedDiffId={isDiffActive ? selectedDiffId : null}
+                  onSelectDiff={handleDiffClick}
+                  onScroll={onScroll}
+                  onScrollRatio={handleBottomSplitScrollRatio}
+                />
               </div>
             </div>
           </div>

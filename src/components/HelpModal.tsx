@@ -94,9 +94,9 @@ export const HelpModal: React.FC<HelpModalProps> = ({
         icon: <Columns className="w-4 h-4 text-purple-500" />,
         summary: 'Prilagodite radni prostor vašim potrebama: čitanje, uređivanje ili oboje paralelno.',
         details: [
-          'Prikaz (Rendered - Oko): Čist, stilizovan prikaz formata sa syntax highlighting-om za kôd, tabelama, formulama i mogućnošću kopiranja blokova koda jednim klikom.',
           'Uredi (Edit - Olovka): Napredan editor sa rednim brojevima linija, prelamanjem teksta i podrškom za Undo/Redo operacije.',
-          'Podeljeno (Split - Kolone): Paralelni prikaz gde sa leve strane kucate, a sa desne trenutno vidite formatirani rezultat uz automatski sinhronizovano skrolovanje.',
+          'Podeljeno (Split - Kolone): Paralelni prikaz gde sa jedne strane kucate, a sa druge trenutno vidite formatirani rezultat uz automatski sinhronizovano skrolovanje.',
+          'Prikaz (Rendered - Oko): Čist, stilizovan formatirani prikaz sa syntax highlighting-om za kôd, tabelama, formulama i mogućnošću kopiranja blokova koda jednim klikom.',
         ],
       },
       {
@@ -107,7 +107,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({
         summary: 'Istovremeni rad sa dva dokumenta i detaljna linijska analiza razlika.',
         details: [
           'Split Screen Mode: Dugme se automatski pojavljuje isključivo kada su u aplikaciji otvorena tačno dva dokumenta. Omogućava vam rad sa dva različita fajla na jednom ekranu.',
-          'Ponašanje u Split Screen Mode-u: Opcije "Uredi" i "Prikaz" prikazuju dokumente jedan pored drugog (side-by-side), dok opcija "Podeljeno" prikazuje dokumente jedan ispod drugog (stacked).',
+          'Ponašanje u Split Screen Mode-u: Opcije "Uredi" i "Prikaz" prikazuju dokumente jedan pored drugog (side-by-side), dok opcija "Podeljeno" prikazuje dokumente jedan ispod drugog (stacked), pri čemu svaki dokument u svom redu ima Markdown editor paralelno pored formatiranog prikaza.',
           'Diff analiza razlika: Opcija Diff se pojavljuje kada su otvorena dva dokumenta i aktiviran Split Screen Mode. Automatski upoređuje sadržaj dva dokumenta i izlistava razlike.',
           'Prikaz vrednosti i brojeva linija: Diff lista prikazuje broj linije i uporednu vrednost iz levog naspram desnog dokumenta.',
           'Kolor-kodirano markiranje: Linije koje se razlikuju označene su bojama u dokumentima (zelena za dodavanja, crvena za uklanjanja, žuta/ćilibar za izmene) i u poravnatoj tabeli razlika.',
