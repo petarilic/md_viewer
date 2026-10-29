@@ -401,16 +401,19 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
       xl: 'text-lg',
     };
 
+    const tbBtnClass =
+      'p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer';
+
     return (
-      <div className="w-full h-full flex flex-col bg-slate-900 text-slate-100 font-mono">
+      <div className="w-full h-full flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono transition-colors">
         {/* Formatting Toolbar */}
-        <div className="flex items-center justify-between gap-1 px-2 sm:px-3 py-1.5 border-b border-slate-800 bg-slate-950/70 text-slate-300 text-xs select-none no-print overflow-x-auto">
+        <div className="flex items-center justify-between gap-1 px-2 sm:px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 text-xs select-none no-print overflow-x-auto">
           {/* Markdown Format Buttons */}
           <div className="flex items-center gap-0.5 overflow-x-auto shrink-0 scrollbar-none py-0.5">
             <button
               type="button"
               onClick={() => insertFormatting('**', '**', 'podebljan tekst')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Podebljano (Bold - **tekst**)"
             >
               <Bold className="w-3.5 h-3.5" />
@@ -418,7 +421,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => insertFormatting('*', '*', 'kurzivni tekst')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Kurziv (Italic - *tekst*)"
             >
               <Italic className="w-3.5 h-3.5" />
@@ -426,18 +429,18 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => insertFormatting('~~', '~~', 'precrtan tekst')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Precrtano (Strikethrough - ~~tekst~~)"
             >
               <Strikethrough className="w-3.5 h-3.5" />
             </button>
 
-            <div className="w-px h-4 bg-slate-800 mx-1" />
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
             <button
               type="button"
               onClick={() => toggleLinePrefix('# ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Naslov 1 (# H1)"
             >
               <Heading1 className="w-3.5 h-3.5" />
@@ -445,7 +448,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => toggleLinePrefix('## ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Naslov 2 (## H2)"
             >
               <Heading2 className="w-3.5 h-3.5" />
@@ -453,18 +456,18 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => toggleLinePrefix('### ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Naslov 3 (### H3)"
             >
               <Heading3 className="w-3.5 h-3.5" />
             </button>
 
-            <div className="w-px h-4 bg-slate-800 mx-1" />
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
             <button
               type="button"
               onClick={() => toggleLinePrefix('- ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Nenumerisana lista (- stavka)"
             >
               <List className="w-3.5 h-3.5" />
@@ -472,7 +475,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => toggleLinePrefix('1. ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Numerisana lista (1. stavka)"
             >
               <ListOrdered className="w-3.5 h-3.5" />
@@ -480,18 +483,18 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => toggleLinePrefix('- [ ] ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Task lista (- [ ] zadatak)"
             >
               <CheckSquare className="w-3.5 h-3.5" />
             </button>
 
-            <div className="w-px h-4 bg-slate-800 mx-1" />
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
             <button
               type="button"
               onClick={() => toggleLinePrefix('> ')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Citat (> citat)"
             >
               <Quote className="w-3.5 h-3.5" />
@@ -499,7 +502,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => insertFormatting('`', '`', 'kod')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Inline kôd (`kod`)"
             >
               <Code className="w-3.5 h-3.5" />
@@ -507,18 +510,18 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => insertFormatting('```\n', '\n```', '// kôd ovde')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Blok koda (```)"
             >
               <FileCode className="w-3.5 h-3.5" />
             </button>
 
-            <div className="w-px h-4 bg-slate-800 mx-1" />
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
             <button
               type="button"
               onClick={() => insertFormatting('[', '](https://)', 'tekst linka')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Link ([tekst](url))"
             >
               <Link className="w-3.5 h-3.5" />
@@ -526,7 +529,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => insertFormatting('![', '](https://)', 'opis slike')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Slika (![opis](url))"
             >
               <Image className="w-3.5 h-3.5" />
@@ -538,7 +541,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
                   '\n| Kolona 1 | Kolona 2 |\n| :--- | :--- |\n| Podatak 1 | Podatak 2 |\n'
                 )
               }
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Tabela"
             >
               <Table className="w-3.5 h-3.5" />
@@ -546,7 +549,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={() => insertFormatting('\n---\n')}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white transition"
+              className={tbBtnClass}
               title="Horizontalna linija (---)"
             >
               <Minus className="w-3.5 h-3.5" />
@@ -559,7 +562,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
               type="button"
               onClick={handleUndo}
               disabled={!canUndo}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition"
+              className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
               title="Poništi (Undo - Ctrl+Z)"
             >
               <Undo2 className="w-3.5 h-3.5" />
@@ -568,21 +571,21 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
               type="button"
               onClick={handleRedo}
               disabled={!canRedo}
-              className="p-1.5 rounded hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition"
+              className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
               title="Ponovi (Redo - Ctrl+Y)"
             >
               <Redo2 className="w-3.5 h-3.5" />
             </button>
 
-            <div className="w-px h-4 bg-slate-800 mx-1" />
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
             <button
               type="button"
               onClick={() => setWordWrap(!wordWrap)}
-              className={`p-1.5 rounded transition ${
+              className={`p-1.5 rounded transition cursor-pointer ${
                 wordWrap
-                  ? 'bg-blue-900/50 text-blue-300'
-                  : 'hover:bg-slate-800 hover:text-white text-slate-400'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-medium'
+                  : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Prelom redova (Word Wrap)"
             >
@@ -592,13 +595,13 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             <button
               type="button"
               onClick={handleCopyAll}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 hover:text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:hover:text-white transition cursor-pointer"
               title="Kopiraj ceo Markdown sadržaj"
             >
               {copied ? (
                 <>
-                  <Check className="w-3 h-3 text-emerald-400" />
-                  <span className="text-[11px] text-emerald-400">Kopirano!</span>
+                  <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Kopirano!</span>
                 </>
               ) : (
                 <>
@@ -615,7 +618,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
           {/* Line Numbers Column with optional Diff markers */}
           <div
             ref={lineNumbersRef}
-            className="w-13 py-3 pr-1 text-right text-slate-500 bg-slate-950/30 border-r border-slate-800 select-none overflow-hidden font-mono shrink-0"
+            className="w-13 py-3 pr-1 text-right text-slate-400 dark:text-slate-500 bg-slate-50/90 dark:bg-slate-950/40 border-r border-slate-200 dark:border-slate-800 select-none overflow-hidden font-mono shrink-0"
           >
             {lines.map((_, i) => {
               const lineNum = i + 1;
@@ -628,15 +631,15 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
               if (diffInfo) {
                 if (diffInfo.type === 'added') {
                   diffClass =
-                    'bg-emerald-500/25 text-emerald-300 font-bold border-r-2 border-emerald-400';
+                    'bg-emerald-100 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 font-bold border-r-2 border-emerald-500 dark:border-emerald-400';
                   badgeSymbol = '+';
                 } else if (diffInfo.type === 'removed') {
                   diffClass =
-                    'bg-rose-500/25 text-rose-300 font-bold border-r-2 border-rose-400';
+                    'bg-rose-100 dark:bg-rose-500/25 text-rose-800 dark:text-rose-300 font-bold border-r-2 border-rose-500 dark:border-rose-400';
                   badgeSymbol = '-';
                 } else if (diffInfo.type === 'modified') {
                   diffClass =
-                    'bg-amber-500/25 text-amber-300 font-bold border-r-2 border-amber-400';
+                    'bg-amber-100 dark:bg-amber-500/25 text-amber-800 dark:text-amber-300 font-bold border-r-2 border-amber-500 dark:border-amber-400';
                   badgeSymbol = '~';
                 }
               }
@@ -645,7 +648,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
                 <div
                   key={i}
                   className={`${fontSizeClasses[settings.fontSize]} leading-6 px-1 flex items-center justify-end gap-1 ${
-                    isSelectedDiff ? 'ring-1 ring-indigo-400 ' : ''
+                    isSelectedDiff ? 'ring-1 ring-indigo-500 dark:ring-indigo-400 font-bold ' : ''
                   }${diffClass}`}
                   title={diffInfo ? `Razlika: linija ${lineNum} (${diffInfo.type})` : undefined}
                 >
@@ -664,7 +667,7 @@ export const EditorView = forwardRef<EditorViewRef, EditorViewProps>(
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
             spellCheck={false}
-            className={`flex-1 p-3 bg-transparent text-slate-100 ${
+            className={`flex-1 p-3 bg-white dark:bg-transparent text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-blue-600 dark:caret-blue-400 selection:bg-blue-100 dark:selection:bg-blue-900/60 ${
               fontSizeClasses[settings.fontSize]
             } leading-6 font-mono outline-none resize-none overflow-y-auto ${
               wordWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'

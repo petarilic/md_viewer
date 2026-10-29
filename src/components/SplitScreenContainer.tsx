@@ -333,9 +333,9 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                     ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 font-medium shadow-xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
-                title="Prikaz dokumenata sa kolor-kodiranim linijama"
+                title="Standardni prikaz toka dokumenata sa kolor-kodiranim razlikama"
               >
-                Prikaz teksta
+                Standardni tok
               </button>
               <button
                 type="button"
@@ -422,6 +422,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
               if (found) handleSelectDiff(id, found);
             }}
             settings={settings}
+            viewMode={viewMode}
           />
         ) : isHorizontalSplit ? (
           /* =================================================================== */

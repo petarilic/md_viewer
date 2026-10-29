@@ -58,6 +58,8 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
         '[Ispravka] Otklonjen problem sa sinhronizovanim skrolovanjem u Split Screen Mode-u: implementirano precizno, proporcionalno i dvosmerno sinhronizovano skrolovanje između otvorenih dokumenata u svim režimima (uključujući složeni vertikalni "Podeljeno" raspored sa 4 paralelna panela)',
         '[Ispravka] Otklonjen problem sa prikazom razlika u Formatiranom prikazu: kada je uključen Diff u Split Screen Mode-u, razlike su sada jasno markirane i kolor-kodirane i u formatiranom tekstu (zeleno za dodavanja u desnom dokumentu, crveno za uklanjanja iz levog, ćilibar za izmene) sa bedževima linija, automatskim skrolovanjem na selekciju i interaktivnim klikom, u oba režima („Prikaz” i „Podeljeno”)',
         '[Poboljšanje] Prilagođen redosled opcija prikaza u traci sa alatkama: dugmad režima su sada poređana redom „Uredi”, „Podeljeno”, „Prikaz”',
+        '[Poboljšanje] Prilagođena tema i paleta boja editora za Light mode: editor teksta, traka sa alatkama za formatiranje, brojevi linija i Diff oznake sada imaju čist, svetao i prijatan izgled u svetloj temi uz očuvanu punu podršku za tamnu temu',
+        '[Ispravka] Otklonjen problem prikaza u opciji „Poravnate linije”: kada je u Split Screen-u izabran „Prikaz”, uključivanjem poravnatih linija oba dokumenta ostaju u formatiranom prikazu (Prikaz / Rendered) sa primenjenim stilovima, naslovima i formatom, umesto prebacivanja u sirovi tekst editora',
       ],
     },
     {
