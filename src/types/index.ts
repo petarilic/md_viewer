@@ -34,6 +34,7 @@ export interface DocumentItem {
   source: 'local' | 'url' | 'sample' | 'new';
   url?: string;
   fileHandle?: any; // FileSystemFileHandle for native File System Access API
+  viewMode?: ViewMode;
 }
 
 export interface TocItem {

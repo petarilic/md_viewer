@@ -97,6 +97,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({
           'Uredi (Edit - Olovka): Napredan editor sa rednim brojevima linija, prelamanjem teksta i podrškom za Undo/Redo operacije.',
           'Podeljeno (Split - Kolone): Paralelni prikaz gde sa jedne strane kucate, a sa druge trenutno vidite formatirani rezultat uz automatski sinhronizovano skrolovanje.',
           'Prikaz (Rendered - Oko): Čist, stilizovan formatirani prikaz sa syntax highlighting-om za kôd, tabelama, formulama i mogućnošću kopiranja blokova koda jednim klikom.',
+          'Nezavisno pamćenje režima po dokumentu: Svaki otvoreni dokument zasebno pamti svoj režim rada (Uredi, Podeljeno ili Prikaz). Prebacivanjem između tabova automatski se aktivira i vraća sačuvani režim za dati fajl.',
         ],
       },
       {

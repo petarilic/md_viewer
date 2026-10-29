@@ -135,8 +135,28 @@ export default function App() {
     return documents.find((doc) => doc.id === activeDocId) || null;
   }, [documents, activeDocId]);
 
+  // Active document's current view mode: each document independently remembers its own view mode ('edit' | 'split' | 'rendered')
+  const viewMode: ViewMode = activeDocument?.viewMode || 'rendered';
+
+  const setViewMode = useCallback(
+    (modeOrUpdater: ViewMode | ((prev: ViewMode) => ViewMode)) => {
+      if (!activeDocId) return;
+      setDocuments((prev) =>
+        prev.map((doc) => {
+          if (doc.id !== activeDocId) return doc;
+          const currentMode = doc.viewMode || 'rendered';
+          const nextMode =
+            typeof modeOrUpdater === 'function'
+              ? modeOrUpdater(currentMode)
+              : modeOrUpdater;
+          return { ...doc, viewMode: nextMode };
+        })
+      );
+    },
+    [activeDocId]
+  );
+
   // UI States
-  const [viewMode, setViewMode] = useState<ViewMode>('rendered');
   const [isTocOpen, setIsTocOpen] = useState(true);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -367,20 +387,28 @@ export default function App() {
   // Add document
   const addDocument = useCallback(
     (newDoc: DocumentItem, activateMode?: ViewMode) => {
+      const modeToSet = activateMode || newDoc.viewMode || 'rendered';
+      const docWithMode: DocumentItem = {
+        ...newDoc,
+        viewMode: modeToSet,
+      };
+
       setDocuments((prev) => {
-        const existing = prev.find(
+        const existingIndex = prev.findIndex(
           (d) => d.id === newDoc.id || (d.name === newDoc.name && d.size === newDoc.size)
         );
-        if (existing) {
+        if (existingIndex >= 0) {
+          if (activateMode) {
+            return prev.map((d, idx) =>
+              idx === existingIndex ? { ...d, viewMode: activateMode } : d
+            );
+          }
           return prev;
         }
-        return [...prev, newDoc];
+        return [...prev, docWithMode];
       });
       setActiveDocId(newDoc.id);
-      addToRecent(newDoc);
-      if (activateMode) {
-        setViewMode(activateMode);
-      }
+      addToRecent(docWithMode);
     },
     [addToRecent]
   );
@@ -1227,7 +1255,7 @@ export default function App() {
             onSelectTemplate={handleQuickSelectTemplate}
             onOpenSample={handleOpenSample}
             recentDocuments={recentDocuments}
-            onOpenRecent={(doc) => addDocument(doc, 'rendered')}
+            onOpenRecent={(doc) => addDocument(doc, doc.viewMode || 'rendered')}
             isDragging={isDragging}
           />
         )}

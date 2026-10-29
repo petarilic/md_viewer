@@ -126,12 +126,10 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onToggleDiff,
 }) => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
-  const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const sampleMenuRef = useRef<HTMLDivElement>(null);
   const templateMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
@@ -139,9 +137,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setIsExportMenuOpen(false);
-      }
-      if (sampleMenuRef.current && !sampleMenuRef.current.contains(e.target as Node)) {
-        setIsSampleMenuOpen(false);
       }
       if (templateMenuRef.current && !templateMenuRef.current.contains(e.target as Node)) {
         setIsTemplateMenuOpen(false);
@@ -323,73 +318,8 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                   )}
                 </button>
-
-                <button
-                  onClick={onSaveAs}
-                  className="hidden xl:flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-medium transition cursor-pointer"
-                  title="Sačuvaj kao novi fajl (Save As)"
-                >
-                  <span>Save As...</span>
-                </button>
               </>
             )}
-
-            {/* Desktop Sample docs dropdown */}
-            <div className={`relative ${isSampleMenuOpen ? 'z-50' : ''}`} ref={sampleMenuRef}>
-              <button
-                onClick={() => setIsSampleMenuOpen(!isSampleMenuOpen)}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
-                title="Učitaj pripremljene primere"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span className="hidden lg:inline">Primeri</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-
-              {isSampleMenuOpen && (
-                <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
-                  <button
-                    onClick={() => {
-                      onOpenSample('spec');
-                      setIsSampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
-                  >
-                    <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-                    <div>
-                      <div className="font-medium">Specifikacija Projekta</div>
-                      <div className="text-[10px] text-slate-400">Specifikacija ovog MD Viewer & Editor-a</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      onOpenSample('showcase');
-                      setIsSampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <div>
-                      <div className="font-medium">GFM & Markdown Vodič</div>
-                      <div className="text-[10px] text-slate-400">Tabele, blokovi koda, formule</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      onOpenSample('quickstart');
-                      setIsSampleMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-500" />
-                    <div>
-                      <div className="font-medium">Brzi start vodič</div>
-                      <div className="text-[10px] text-slate-400">Prečice i uputstvo za upotrebu</div>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -853,17 +783,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                         </span>
                       )}
                     </button>
-
-                    <button
-                      onClick={() => {
-                        setIsMobileMenuOpen(false);
-                        onSaveAs();
-                      }}
-                      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
-                    >
-                      <Download className="w-4 h-4 text-blue-500" />
-                      <span>Sačuvaj kao (Save As)...</span>
-                    </button>
                   </>
                 )}
 
@@ -977,42 +896,6 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                 </div>
               )}
 
-              {/* Sekcija: Primeri */}
-              <div className="space-y-1">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Pripremljeni primeri
-                </div>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenSample('spec');
-                  }}
-                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
-                >
-                  <BookOpen className="w-4 h-4 text-blue-500" />
-                  <span>Specifikacija aplikacije</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenSample('showcase');
-                  }}
-                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>GFM & Markdown vodič</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    onOpenSample('quickstart');
-                  }}
-                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
-                >
-                  <FileText className="w-4 h-4 text-emerald-500" />
-                  <span>Korisnički vodič</span>
-                </button>
-              </div>
 
               {/* Sekcija: Teme i podešavanja */}
               <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">

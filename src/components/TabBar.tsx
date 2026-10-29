@@ -89,7 +89,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             <div
               key={doc.id}
               onClick={() => onSelectDoc(doc.id)}
-              className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 max-w-[170px] sm:max-w-[240px] ${
+              className={`group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition shrink-0 max-w-[170px] sm:max-w-[260px] ${
                 isActive
                   ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs border border-slate-200/80 dark:border-slate-800'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-900/40'
