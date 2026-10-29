@@ -1,5 +1,5 @@
 import React from 'react';
-import { DocumentStats, ViewMode } from '../types';
+import { DocumentStats, ViewMode, PaperFormat } from '../types';
 import {
   FileText,
   Clock,
@@ -13,9 +13,11 @@ import {
   Info,
   HelpCircle,
   GitCompare,
+  BookOpen,
 } from 'lucide-react';
 import { formatBytes } from '../utils/markdown';
 import { APP_ABOUT_CONFIG } from '../config/aboutConfig';
+import { PAPER_FORMAT_MAP } from '../utils/pagination';
 
 interface StatusBarProps {
   fileName: string;
@@ -25,8 +27,12 @@ interface StatusBarProps {
   activeHeading: string | null;
   onOpenAbout?: () => void;
   onOpenHelp?: () => void;
+  onOpenSettings?: () => void;
   isSplitScreenActive?: boolean;
   isDiffActive?: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  paperFormat?: PaperFormat;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -37,8 +43,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   activeHeading,
   onOpenAbout,
   onOpenHelp,
+  onOpenSettings,
   isSplitScreenActive = false,
   isDiffActive = false,
+  currentPage,
+  totalPages,
+  paperFormat = 'a4',
 }) => {
   const viewModeIcons = {
     edit: <Edit3 className="w-3 h-3 text-amber-500" />,
@@ -52,9 +62,11 @@ export const StatusBar: React.FC<StatusBarProps> = ({
     split: 'Podeljeno',
   };
 
+  const activeFormatInfo = PAPER_FORMAT_MAP[paperFormat] || PAPER_FORMAT_MAP.a4;
+
   return (
     <footer className="status-bar h-8 px-3 border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 select-none z-20 no-print">
-      {/* Left items: filename, modified state, file size, words, characters, lines */}
+      {/* Left items: filename, modified state, file size, words, characters, lines, pages */}
       <div className="flex items-center gap-3 overflow-hidden text-[11px]">
         <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[180px] sm:max-w-xs">
           <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
@@ -93,6 +105,26 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <span className="text-slate-300 dark:text-slate-700 hidden md:inline">•</span>
 
         <span className="hidden md:inline font-mono">{stats.lines} linija</span>
+
+        {/* Page counter based on selected paper format (e.g. Strana 1 od 4 (A4)) */}
+        {totalPages !== undefined && (
+          <>
+            <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+            <div
+              onClick={onOpenSettings}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50/90 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300 font-medium cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/80 transition"
+              title={`Format papira: ${activeFormatInfo.name} (${activeFormatInfo.dimensionsLabel}) • Kliknite za promenu formata papira u podešavanjima`}
+            >
+              <BookOpen className="w-3 h-3 text-blue-500 shrink-0" />
+              <span>
+                Strana <strong className="font-semibold text-blue-900 dark:text-blue-100">{currentPage || 1}</strong> od <strong className="font-semibold text-blue-900 dark:text-blue-100">{totalPages || 1}</strong>
+              </span>
+              <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-blue-200/70 dark:bg-blue-900/90 text-blue-800 dark:text-blue-200 uppercase">
+                {paperFormat.toUpperCase()}
+              </span>
+            </div>
+          </>
+        )}
 
         <span className="text-slate-300 dark:text-slate-700 hidden lg:inline">•</span>
 

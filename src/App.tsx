@@ -42,6 +42,7 @@ import { PdfExportModal } from './components/PdfExportModal';
 import { AboutModal } from './components/AboutModal';
 import { HelpModal } from './components/HelpModal';
 import { FileUp } from 'lucide-react';
+import { calculatePageInfoFromElement } from './utils/pagination';
 
 const DEFAULT_SETTINGS: ViewerSettings = {
   theme: 'system',
@@ -49,6 +50,7 @@ const DEFAULT_SETTINGS: ViewerSettings = {
   fontFamily: 'sans',
   contentWidth: 'standard',
   lineSpacing: 'normal',
+  paperFormat: 'a4',
   showLineNumbersInCode: true,
   showToc: true,
   syncScroll: true,
@@ -128,6 +130,11 @@ export default function App() {
     return [];
   });
 
+  // Active document
+  const activeDocument = useMemo(() => {
+    return documents.find((doc) => doc.id === activeDocId) || null;
+  }, [documents, activeDocId]);
+
   // UI States
   const [viewMode, setViewMode] = useState<ViewMode>('rendered');
   const [isTocOpen, setIsTocOpen] = useState(true);
@@ -187,6 +194,62 @@ export default function App() {
   const splitPreviewScrollRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  // Real-time pagination state based on paper format and scroll position
+  const [pageInfo, setPageInfo] = useState<{ currentPage: number; totalPages: number }>({
+    currentPage: 1,
+    totalPages: 1,
+  });
+
+  // Helper to retrieve the active scrollable container
+  const getActiveScrollElement = useCallback((): HTMLElement | null => {
+    if (isSplitScreenActive && documents.length === 2) {
+      const leftPane = document.querySelector('.split-pane-left') as HTMLElement | null;
+      if (leftPane) {
+        const scrollEl = (leftPane.querySelector('.markdown-body')?.parentElement ||
+          leftPane.querySelector('textarea')) as HTMLElement | null;
+        if (scrollEl) return scrollEl;
+      }
+      const topPane = document.querySelector('.split-pane-top') as HTMLElement | null;
+      if (topPane) {
+        const scrollEl = (topPane.querySelector('.markdown-body')?.parentElement ||
+          topPane.querySelector('textarea')) as HTMLElement | null;
+        if (scrollEl) return scrollEl;
+      }
+    }
+
+    if (viewMode === 'rendered') {
+      return renderedScrollRef.current;
+    } else if (viewMode === 'edit') {
+      return editorRef.current?.getTextarea() || null;
+    } else if (viewMode === 'split') {
+      return splitPreviewScrollRef.current || editorRef.current?.getTextarea() || null;
+    }
+    return null;
+  }, [isSplitScreenActive, documents.length, viewMode]);
+
+  // Update page count and current page
+  const updatePageInfo = useCallback(() => {
+    if (!activeDocument) {
+      setPageInfo({ currentPage: 1, totalPages: 1 });
+      return;
+    }
+
+    const el = getActiveScrollElement();
+    const info = calculatePageInfoFromElement(
+      el,
+      settings.paperFormat || 'a4',
+      settings.fontSize,
+      activeDocument.content
+    );
+
+    setPageInfo((prev) => {
+      if (prev.currentPage === info.currentPage && prev.totalPages === info.totalPages) {
+        return prev;
+      }
+      return info;
+    });
+  }, [activeDocument, getActiveScrollElement, settings.paperFormat, settings.fontSize]);
+
   // Check scroll position across active view modes (rendered, edit, split)
   const handleCheckScroll = useCallback(() => {
     const SCROLL_THRESHOLD = 180;
@@ -213,7 +276,8 @@ export default function App() {
     }
 
     setShowScrollTop(isScrolled);
-  }, [viewMode]);
+    updatePageInfo();
+  }, [viewMode, updatePageInfo]);
 
   // Smooth scroll active document views back to top
   const handleScrollToTop = useCallback(() => {
@@ -236,13 +300,14 @@ export default function App() {
     }
   }, [viewMode]);
 
-  // Synchronize scroll button visibility when active document or view mode changes
+  // Synchronize scroll button visibility and page info when document, view mode or paper format changes
   useEffect(() => {
     const timer = setTimeout(() => {
       handleCheckScroll();
+      updatePageInfo();
     }, 60);
     return () => clearTimeout(timer);
-  }, [activeDocId, viewMode, handleCheckScroll]);
+  }, [activeDocId, activeDocument?.content, viewMode, settings.paperFormat, settings.fontSize, handleCheckScroll, updatePageInfo]);
 
   // Memoized search total matches updater to avoid re-renders
   const handleUpdateTotalMatches = useCallback((total: number) => {
@@ -269,11 +334,6 @@ export default function App() {
       type,
     });
   }, []);
-
-  // Active document
-  const activeDocument = useMemo(() => {
-    return documents.find((doc) => doc.id === activeDocId) || null;
-  }, [documents, activeDocId]);
 
   // TOC extraction
   const toc = useMemo(() => {
@@ -1193,8 +1253,12 @@ export default function App() {
           }
           onOpenAbout={() => setIsAboutOpen(true)}
           onOpenHelp={() => setIsHelpOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           isSplitScreenActive={isSplitScreenActive && documents.length === 2}
           isDiffActive={isDiffActive}
+          currentPage={pageInfo.currentPage}
+          totalPages={pageInfo.totalPages}
+          paperFormat={settings.paperFormat || 'a4'}
         />
       )}
 

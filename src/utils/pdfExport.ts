@@ -1,11 +1,11 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { renderMarkdownToHtml } from './markdown';
-import { ViewerSettings, FontSize } from '../types';
+import { ViewerSettings, FontSize, PaperFormat } from '../types';
 
 export interface PdfExportOptions {
   filename: string;
-  pageSize?: 'a4' | 'letter';
+  pageSize?: PaperFormat;
   orientation?: 'p' | 'l';
   theme?: 'light' | 'dark';
   includeHeader?: boolean;
@@ -27,9 +27,32 @@ export async function generatePdfBlob(
   const pageSize = options.pageSize || 'a4';
 
   // Dimensions in mm
-  // A4: 210 x 297 mm, Letter: 215.9 x 279.4 mm
-  let pdfWidth = pageSize === 'letter' ? 215.9 : 210;
-  let pdfHeight = pageSize === 'letter' ? 279.4 : 297;
+  let pdfWidth = 210;
+  let pdfHeight = 297;
+  switch (pageSize) {
+    case 'a3':
+      pdfWidth = 297;
+      pdfHeight = 420;
+      break;
+    case 'a5':
+      pdfWidth = 148;
+      pdfHeight = 210;
+      break;
+    case 'letter':
+      pdfWidth = 215.9;
+      pdfHeight = 279.4;
+      break;
+    case 'legal':
+      pdfWidth = 215.9;
+      pdfHeight = 355.6;
+      break;
+    case 'a4':
+    default:
+      pdfWidth = 210;
+      pdfHeight = 297;
+      break;
+  }
+
   if (isLandscape) {
     const tmp = pdfWidth;
     pdfWidth = pdfHeight;

@@ -443,7 +443,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                 activeDriverRef.current = 'left';
                 isSyncingScrollRef.current = false;
               }}
-              className="flex-1 h-full min-w-0 border-r border-slate-200 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40"
+              className="split-pane-left flex-1 h-full min-w-0 border-r border-slate-200 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40"
             >
               {/* Left Pane Header */}
               <div className="h-7 px-3 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">
@@ -590,7 +590,7 @@ export const SplitScreenContainer: React.FC<SplitScreenContainerProps> = ({
                 activeDriverRef.current = 'top';
                 isSyncingScrollRef.current = false;
               }}
-              className="flex-1 w-full min-h-0 border-b-2 border-slate-300 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40"
+              className="split-pane-top flex-1 w-full min-h-0 border-b-2 border-slate-300 dark:border-slate-800 flex flex-col relative bg-white dark:bg-slate-900/40"
             >
               {/* Top Pane Header */}
               <div className="h-7 px-3 bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">

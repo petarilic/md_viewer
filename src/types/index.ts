@@ -7,6 +7,7 @@ export type FontFamily = 'sans' | 'serif' | 'mono';
 export type ContentWidth = 'narrow' | 'standard' | 'wide' | 'full';
 export type LineSpacing = 'compact' | 'normal' | 'relaxed';
 export type CodeTheme = 'github-dark' | 'github-light' | 'monokai' | 'dracula' | 'nord';
+export type PaperFormat = 'a4' | 'a3' | 'a5' | 'letter' | 'legal';
 
 export interface ViewerSettings {
   theme: Theme;
@@ -14,6 +15,7 @@ export interface ViewerSettings {
   fontFamily: FontFamily;
   contentWidth: ContentWidth;
   lineSpacing: LineSpacing;
+  paperFormat: PaperFormat;
   showLineNumbersInCode: boolean;
   showToc: boolean;
   syncScroll: boolean;

@@ -164,7 +164,8 @@ export const HelpModal: React.FC<HelpModalProps> = ({
         summary: 'Prilagodite veličinu teksta, tipografiju i temu.',
         details: [
           'Brza promena teme: Klikom na ikonu Sunce/Mesec u gornjoj traci trenutno prebacujete između svetle i tamne teme.',
-          'Podešavanja prikaza: Podesite familiju fonta (Sans, Serif, Mono), veličinu fonta, širinu čitanja i prored.',
+          'Podešavanja prikaza: Podesite familiju fonta (Sans, Serif, Mono), veličinu fonta, širinu čitanja, prored i format papira (A4, A3, A5, US Letter, US Legal).',
+          'Proračun strana i živa paginacija: U dnu ekrana u statusnoj traci ispisuje se ukupan broj strana i ažurira trenutna strana tokom skrolovanja (npr. Strana 2 od 5 (A4)) uz brzi klik za promenu formata.',
           'Scroll to top dugme: Pojavljuje se u donjem desnom uglu kada skrolujete naniže za glatki povratak na početak.',
         ],
       },

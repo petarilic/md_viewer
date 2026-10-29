@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileType, Check, Loader2, Download, Sun, Moon, Sliders } from 'lucide-react';
 import { generatePdfBlob, savePdfFile, PdfExportOptions } from '../utils/pdfExport';
-import { ViewerSettings } from '../types';
+import { ViewerSettings, PaperFormat } from '../types';
 
 interface PdfExportModalProps {
   isOpen: boolean;
@@ -25,13 +25,13 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   onError,
 }) => {
   const [filename, setFilename] = useState('');
-  const [pageSize, setPageSize] = useState<'a4' | 'letter'>('a4');
+  const [pageSize, setPageSize] = useState<PaperFormat>(settings.paperFormat || 'a4');
   const [orientation, setOrientation] = useState<'p' | 'l'>('p');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [includeHeader, setIncludeHeader] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Initialize filename when modal opens
+  // Initialize filename and page size from settings when modal opens
   useEffect(() => {
     if (isOpen) {
       let initialName = defaultFilename || 'Dokument';
@@ -40,9 +40,12 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
         initialName += '.pdf';
       }
       setFilename(initialName);
+      if (settings.paperFormat) {
+        setPageSize(settings.paperFormat);
+      }
       setIsGenerating(false);
     }
-  }, [isOpen, defaultFilename]);
+  }, [isOpen, defaultFilename, settings.paperFormat]);
 
   // Handle escape key
   useEffect(() => {
@@ -209,31 +212,30 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Format stranice
               </label>
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setPageSize('a4')}
-                  disabled={isGenerating}
-                  className={`py-1.5 text-xs font-medium rounded-lg transition cursor-pointer ${
-                    pageSize === 'a4'
-                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  A4
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPageSize('letter')}
-                  disabled={isGenerating}
-                  className={`py-1.5 text-xs font-medium rounded-lg transition cursor-pointer ${
-                    pageSize === 'letter'
-                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  Letter
-                </button>
+              <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+                {(
+                  [
+                    { id: 'a4', label: 'A4' },
+                    { id: 'a3', label: 'A3' },
+                    { id: 'a5', label: 'A5' },
+                    { id: 'letter', label: 'Letter' },
+                    { id: 'legal', label: 'Legal' },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPageSize(id)}
+                    disabled={isGenerating}
+                    className={`py-1 text-[11px] font-medium rounded-lg transition cursor-pointer text-center ${
+                      pageSize === id
+                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
