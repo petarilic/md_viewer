@@ -19,6 +19,7 @@ import {
   downloadMarkdown,
   openFileWithPicker,
 } from './utils/fileSystem';
+import { readDocxFile } from './utils/docxImport';
 import { SHOWCASE_MD, QUICKSTART_MD } from './data/samples';
 import { DOCUMENT_TEMPLATES } from './data/templates';
 import { HeaderToolbar } from './components/HeaderToolbar';
@@ -209,7 +210,15 @@ export default function App() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docxFileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<EditorViewRef>(null);
+
+  // Check if active document was imported from or originated as .docx
+  const isDocxDocument = Boolean(
+    activeDocument?.importedFromDocx ||
+    activeDocument?.source === 'docx' ||
+    activeDocument?.name.toLowerCase().endsWith('.docx')
+  );
   const renderedScrollRef = useRef<HTMLDivElement>(null);
   const splitPreviewScrollRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -720,11 +729,53 @@ export default function App() {
     fileInputRef.current?.click();
   };
 
+  // Process and import a .docx file preserving all formatting
+  const handleProcessDocxFile = useCallback(
+    async (file: File) => {
+      try {
+        showToast(`Učitavanje i konverzija .docx fajla "${file.name}"...`);
+        const { markdown } = await readDocxFile(file);
+        const newDoc: DocumentItem = {
+          id: `docx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          name: file.name,
+          content: markdown,
+          initialContent: markdown,
+          isModified: false,
+          size: file.size,
+          lastModified: file.lastModified,
+          source: 'docx',
+          importedFromDocx: true,
+          viewMode: 'rendered',
+        };
+        addDocument(newDoc, 'rendered');
+        showToast(`Dokument "${file.name}" uspešno uvezen sa sačuvanim formatiranjem!`);
+      } catch (err) {
+        console.error('Error importing .docx file:', err);
+        showToast(`Greška pri učitavanju .docx fajla "${file.name}".`, 'error');
+      }
+    },
+    [addDocument, showToast]
+  );
+
+  const handleDocxFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (const file of Array.from(files)) {
+      await handleProcessDocxFile(file);
+    }
+    e.target.value = '';
+  };
+
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
+      if (file.name.toLowerCase().endsWith('.docx')) {
+        handleProcessDocxFile(file);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
@@ -784,6 +835,11 @@ export default function App() {
     if (!files || files.length === 0) return;
 
     Array.from(files).forEach((file) => {
+      if (file.name.toLowerCase().endsWith('.docx')) {
+        handleProcessDocxFile(file);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
@@ -1079,11 +1135,23 @@ export default function App() {
         className="hidden"
       />
 
+      {/* Hidden DOCX file input */}
+      <input
+        ref={docxFileInputRef}
+        type="file"
+        multiple
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={handleDocxFileInputChange}
+        className="hidden"
+      />
+
       {/* Top Header Toolbar */}
       <HeaderToolbar
         onNewFile={() => handleRequestNewFile('empty')}
         onOpenFile={handleRequestOpenFile}
         onOpenUrl={() => setIsUrlModalOpen(true)}
+        onImportDocx={() => docxFileInputRef.current?.click()}
+        isDocxDocument={isDocxDocument}
         onSelectTemplate={handleQuickSelectTemplate}
         onOpenSample={handleOpenSample}
         onSave={() => handleSave()}
@@ -1109,7 +1177,14 @@ export default function App() {
         onExportHtml={handleExportHtml}
         onExportTxt={handleExportTxt}
         onPrint={handleOpenPdfExport}
-        onDownloadMarkdown={() => activeDocument && downloadMarkdown(activeDocument.content, activeDocument.name)}
+        onDownloadMarkdown={() => {
+          if (!activeDocument) return;
+          const targetName = isDocxDocument
+            ? (activeDocument.name.replace(/\.docx$/i, '') || 'Dokument') + '.md'
+            : activeDocument.name;
+          downloadMarkdown(activeDocument.content, targetName);
+          showToast(`Dokument uspešno izvezen kao "${targetName}"!`);
+        }}
         hasDocument={!!activeDocument}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
@@ -1297,6 +1372,8 @@ export default function App() {
         settings={settings}
         onUpdateSettings={(upd) => setSettings((prev) => ({ ...prev, ...upd }))}
         onResetSettings={() => setSettings(DEFAULT_SETTINGS)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
       />
 
       {/* About Application Modal */}
@@ -1310,6 +1387,7 @@ export default function App() {
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
         onOpenSampleGuide={() => handleOpenSample('quickstart')}
+        onOpenAbout={() => setIsAboutOpen(true)}
       />
 
       {/* New Document Modal with Templates */}

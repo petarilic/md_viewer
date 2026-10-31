@@ -44,7 +44,8 @@ export const TabBar: React.FC<TabBarProps> = ({
   const handleFinishRename = (id: string) => {
     if (editingName.trim() && onRenameDoc) {
       const clean = editingName.trim();
-      onRenameDoc(id, clean.endsWith('.md') ? clean : `${clean}.md`);
+      const hasExt = clean.endsWith('.md') || clean.endsWith('.docx');
+      onRenameDoc(id, hasExt ? clean : `${clean}.md`);
     }
     setEditingId(null);
   };

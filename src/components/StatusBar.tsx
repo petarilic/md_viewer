@@ -93,34 +93,30 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           </span>
         </div>
 
-        <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-
-        {/* 4. Veličina dokumenta u KB */}
+        {/* 4. Veličina dokumenta u KB - skriveno u mobilnom režimu */}
+        <span className="text-slate-300 dark:text-slate-700 hidden md:inline">•</span>
         <span
-          className="font-mono text-slate-600 dark:text-slate-400 hidden sm:inline shrink-0"
+          className="font-mono text-slate-600 dark:text-slate-400 hidden md:inline shrink-0"
           title={`Tačna veličina: ${stats.fileSizeBytes.toLocaleString()} bajtova`}
         >
           {fileSizeInKb} KB
         </span>
 
+        {/* 5. Veličina dokumenta u linijama teksta - skriveno u mobilnom režimu */}
         <span className="text-slate-300 dark:text-slate-700 hidden md:inline">•</span>
-
-        {/* 5. Veličina dokumenta u linijama teksta */}
         <span className="hidden md:inline font-mono text-slate-600 dark:text-slate-400 shrink-0">
           {stats.lines.toLocaleString()} linija
         </span>
 
+        {/* 6. Veličina dokumenta u broju karaktera - skriveno u mobilnom režimu */}
         <span className="text-slate-300 dark:text-slate-700 hidden md:inline">•</span>
-
-        {/* 6. Veličina dokumenta u broju karaktera */}
         <span className="hidden md:inline font-mono text-slate-600 dark:text-slate-400 shrink-0">
           {stats.characters.toLocaleString()} karaktera
         </span>
 
-        <span className="text-slate-300 dark:text-slate-700 hidden lg:inline">•</span>
-
-        {/* 7. Vreme potrebno za čitanje */}
-        <div className="hidden lg:flex items-center gap-1 text-slate-600 dark:text-slate-400 shrink-0">
+        {/* 7. Vreme potrebno za čitanje - skriveno u mobilnom režimu */}
+        <span className="text-slate-300 dark:text-slate-700 hidden md:inline">•</span>
+        <div className="hidden md:flex items-center gap-1 text-slate-600 dark:text-slate-400 shrink-0">
           <Clock className="w-3 h-3 text-slate-400" />
           <span>~{stats.readingTimeMinutes} min čitanja</span>
         </div>

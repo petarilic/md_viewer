@@ -31,10 +31,11 @@ export interface DocumentItem {
   isModified: boolean;
   size: number;
   lastModified: number;
-  source: 'local' | 'url' | 'sample' | 'new';
+  source: 'local' | 'url' | 'sample' | 'new' | 'docx';
   url?: string;
   fileHandle?: any; // FileSystemFileHandle for native File System Access API
   viewMode?: ViewMode;
+  importedFromDocx?: boolean;
 }
 
 export interface TocItem {

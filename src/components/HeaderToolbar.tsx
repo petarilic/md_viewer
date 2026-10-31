@@ -22,6 +22,7 @@ import {
   Sparkles,
   BookOpen,
   FileCode,
+  FileUp,
   Undo2,
   Redo2,
   FileType,
@@ -44,6 +45,8 @@ interface HeaderToolbarProps {
   onNewFile: () => void;
   onOpenFile: () => void;
   onOpenUrl: () => void;
+  onImportDocx: () => void;
+  isDocxDocument?: boolean;
   onSelectTemplate?: (templateId: string) => void;
   onOpenSample: (sampleKey: 'spec' | 'showcase' | 'quickstart') => void;
   onSave: () => void;
@@ -87,6 +90,8 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onNewFile,
   onOpenFile,
   onOpenUrl,
+  onImportDocx,
+  isDocxDocument = false,
   onSelectTemplate,
   onOpenSample,
   onSave,
@@ -126,10 +131,12 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
   onToggleDiff,
 }) => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const importMenuRef = useRef<HTMLDivElement>(null);
   const templateMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
@@ -137,6 +144,9 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setIsExportMenuOpen(false);
+      }
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setIsImportMenuOpen(false);
       }
       if (templateMenuRef.current && !templateMenuRef.current.contains(e.target as Node)) {
         setIsTemplateMenuOpen(false);
@@ -192,8 +202,9 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
             </div>
           </div>
 
-          {/* Desktop File Actions: New, Open, Save, Save As */}
+          {/* Desktop File Actions: Novi, Otvori, Šabloni, Sačuvaj, Uvoz, Izvoz */}
           <div className="hidden md:flex items-center gap-1 ml-1">
+            {/* 1. Novi */}
             <button
               onClick={() => onNewFile()}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
@@ -203,7 +214,17 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
               <span>Novi</span>
             </button>
 
-            {/* Desktop Templates Dropdown */}
+            {/* 2. Otvori */}
+            <button
+              onClick={onOpenFile}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+              title="Otvori lokalni Markdown fajl (Ctrl+O)"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
+              <span>Otvori</span>
+            </button>
+
+            {/* 3. Šabloni */}
             <div className={`relative ${isTemplateMenuOpen ? 'z-50' : ''}`} ref={templateMenuRef}>
               <button
                 onClick={() => setIsTemplateMenuOpen(!isTemplateMenuOpen)}
@@ -292,40 +313,196 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
               )}
             </div>
 
-            <button
-              onClick={onOpenFile}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
-              title="Otvori lokalni Markdown fajl (Ctrl+O)"
-            >
-              <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
-              <span>Otvori</span>
-            </button>
-
+            {/* 4. Sačuvaj (prikaži kad je učitan dokument, ne prikazuj kada nije) */}
             {hasDocument && (
-              <>
+              <button
+                onClick={onSave}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                  isModified
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs font-semibold'
+                    : 'border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                }`}
+                title={`Sačuvaj izmene (Ctrl+S)${isModified ? ' - Nesačuvane izmene!' : ' - Sačuvano'}`}
+              >
+                <Save className={`w-3.5 h-3.5 ${isModified ? 'text-white' : 'text-slate-400'}`} />
+                <span>Sačuvaj</span>
+                {isModified && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
+              </button>
+            )}
+
+            {/* 5. Uvoz */}
+            <div className={`relative ${isImportMenuOpen ? 'z-50' : ''}`} ref={importMenuRef}>
+              <button
+                onClick={() => setIsImportMenuOpen(!isImportMenuOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+                title="Uvoz dokumenata iz drugih formata (DOCX)"
+              >
+                <FileUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Uvoz</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isImportMenuOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Uvoz dokumenata
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsImportMenuOpen(false);
+                      onImportDocx();
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  >
+                    <FileType className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">
+                        Uvezi iz .DOCX (.docx)
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Učitaj Word dokument sa punim formatiranjem
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 6. Izvoz (prikaži kad je učitan dokument, ne prikazuj kada nije) */}
+            {hasDocument && (
+              <div className={`relative ${isExportMenuOpen ? 'z-50' : ''}`} ref={exportMenuRef}>
                 <button
-                  onClick={onSave}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
-                    isModified
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs font-semibold'
-                      : 'border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}
-                  title={`Sačuvaj izmene (Ctrl+S)${isModified ? ' - Nesačuvane izmene!' : ' - Sačuvano'}`}
+                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+                  title="Izvoz dokumenata (DOCX, TXT, PDF, MD)"
                 >
-                  <Save className={`w-3.5 h-3.5 ${isModified ? 'text-white' : 'text-slate-400'}`} />
-                  <span>Sačuvaj</span>
-                  {isModified && (
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  )}
+                  <Download className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Izvoz</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
                 </button>
-              </>
+
+                {isExportMenuOpen && (
+                  <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
+                    {isDocxDocument ? (
+                      <button
+                        onClick={() => {
+                          onDownloadMarkdown();
+                          setIsExportMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/50 flex items-center gap-2.5 text-blue-700 dark:text-blue-300 font-semibold cursor-pointer border-b border-slate-100 dark:border-slate-800"
+                      >
+                        <FileCode className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-blue-900 dark:text-blue-100">Izvoz u .md format</div>
+                          <div className="text-[10px] text-blue-600/80 dark:text-blue-400">Pretvori i preuzmi u Markdown (.md) formatu</div>
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          onExportDocx();
+                          setIsExportMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
+                      >
+                        <FileType className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u DOCX (.docx)</div>
+                          <div className="text-[10px] text-slate-400">Word dokument sa stilovima i tabelama</div>
+                        </div>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        onExportHtml();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      <Globe className="w-4 h-4 text-orange-500 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u HTML (.html)</div>
+                        <div className="text-[10px] text-slate-400">Samostalna web stranica sa kompletnim stilovima</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onExportTxt();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u TXT (.txt)</div>
+                        <div className="text-[10px] text-slate-400">Čist tekst bez Markdown oznaka</div>
+                      </div>
+                    </button>
+
+                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                    <button
+                      onClick={() => {
+                        onPrint();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      <FileType className="w-4 h-4 text-rose-500 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">Sačuvaj kao PDF (.pdf)</div>
+                        <div className="text-[10px] text-slate-400">Save As prozor za naziv i lokaciju (Ctrl+P)</div>
+                      </div>
+                    </button>
+
+                    {!isDocxDocument && (
+                      <button
+                        onClick={() => {
+                          onDownloadMarkdown();
+                          setIsExportMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer"
+                      >
+                        <FileCode className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span>Preuzmi Markdown fajl (.md)</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        onCopyMarkdown();
+                        setIsExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Kopiraj izvorni tekst</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Center: View Mode Switcher + Split Screen Mode & Diff (when 2 docs) */}
+        {/* Center: Pretraga + View Mode Switcher (Uredi, Podeljeno, Prikaz) + Split Screen Mode & Diff */}
         {hasDocument && (
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Pretraga Button */}
+            <button
+              onClick={onOpenSearch}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+              title="Pretraga u dokumentu (Ctrl+F)"
+            >
+              <Search className="w-3.5 h-3.5 text-blue-500" />
+              <span className="hidden sm:inline">Pretraga</span>
+            </button>
+
+            {/* View Mode Switcher: Uredi, Podeljeno, Prikaz */}
             <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs">
               <button
                 onClick={() => onChangeViewMode('edit')}
@@ -423,210 +600,38 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
           </div>
         )}
 
-        {/* Right side: Desktop Actions + Mobile Quick Actions & Menu Toggle */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Quick Save button for mobile */}
-          {hasDocument && (
-            <button
-              onClick={onSave}
-              className={`md:hidden p-2 rounded-xl transition cursor-pointer relative ${
-                isModified
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-              }`}
-              title="Sačuvaj dokument"
-            >
-              <Save className="w-4 h-4" />
-              {isModified && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              )}
-            </button>
-          )}
-
-          {/* Undo/Redo (Desktop only) */}
-          {hasDocument && (viewMode === 'edit' || viewMode === 'split') && onUndo && onRedo && (
-            <div className="hidden lg:flex items-center gap-0.5">
-              <button
-                onClick={onUndo}
-                disabled={!canUndo}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:pointer-events-none transition"
-                title="Poništi (Undo - Ctrl+Z)"
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={onRedo}
-                disabled={!canRedo}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 disabled:pointer-events-none transition"
-                title="Ponovi (Redo - Ctrl+Y)"
-              >
-                <Redo2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Search Button (Desktop) */}
-          {hasDocument && (
-            <button
-              onClick={onOpenSearch}
-              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
-              title="Pretraga u dokumentu (Ctrl+F)"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Pretraga</span>
-            </button>
-          )}
-
-          {/* Export Dropdown (Desktop) */}
-          {hasDocument && (
-            <div className={`relative hidden md:block ${isExportMenuOpen ? 'z-50' : ''}`} ref={exportMenuRef}>
-              <button
-                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
-                title="Izvoz dokumenata (DOCX, TXT, PDF, MD)"
-              >
-                <Download className="w-3.5 h-3.5 text-blue-500" />
-                <span>Izvoz</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-
-              {isExportMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-[100] text-xs animate-in fade-in slide-in-from-top-1">
-                  <button
-                    onClick={() => {
-                      onExportDocx();
-                      setIsExportMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300"
-                  >
-                    <FileType className="w-4 h-4 text-blue-600" />
-                    <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u DOCX (.docx)</div>
-                      <div className="text-[10px] text-slate-400">Word dokument sa stilovima i tabelama</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onExportHtml();
-                      setIsExportMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
-                  >
-                    <Globe className="w-4 h-4 text-orange-500" />
-                    <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u HTML (.html)</div>
-                      <div className="text-[10px] text-slate-400">Samostalna web stranica sa kompletnim stilovima</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onExportTxt();
-                      setIsExportMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300"
-                  >
-                    <FileText className="w-4 h-4 text-emerald-600" />
-                    <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">Izvoz u TXT (.txt)</div>
-                      <div className="text-[10px] text-slate-400">Čist tekst bez Markdown oznaka</div>
-                    </div>
-                  </button>
-
-                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-
-                  <button
-                    onClick={() => {
-                      onPrint();
-                      setIsExportMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 text-slate-700 dark:text-slate-300 cursor-pointer"
-                  >
-                    <FileType className="w-4 h-4 text-rose-500" />
-                    <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">Sačuvaj kao PDF (.pdf)</div>
-                      <div className="text-[10px] text-slate-400">Save As prozor za naziv i lokaciju (Ctrl+P)</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onDownloadMarkdown();
-                      setIsExportMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
-                  >
-                    <FileCode className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Preuzmi Markdown fajl (.md)</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onCopyMarkdown();
-                      setIsExportMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-300"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Kopiraj izvorni tekst</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Fullscreen Toggle (Desktop) */}
-          <button
-            onClick={onToggleFullscreen}
-            className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition cursor-pointer"
-            title={isFullscreen ? 'Izađi iz celog ekrana' : 'Prikaz preko celog ekrana (F11)'}
-          >
-            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-          </button>
-
-          {/* Help button (Desktop) */}
-          <button
-            onClick={onOpenHelp}
-            className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer"
-            title="Pomoć i uputstvo (Help) [F1]"
-            aria-label="Pomoć (F1)"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-
-          {/* Discrete Info / About button (Desktop) */}
-          <button
-            onClick={onOpenAbout}
-            className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-            title="O aplikaciji (About) [~]"
-            aria-label="O aplikaciji"
-          >
-            <Info className="w-4 h-4" />
-          </button>
-
-          {/* Settings button (Desktop) */}
+        {/* Right side: Podešavanja + Pomoć (sa ugrađenim "i" za O aplikaciji) + Mobile toggle */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Podešavanja button */}
           <button
             onClick={onOpenSettings}
-            className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition cursor-pointer"
-            title="Podešavanja izgleda i fontova"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium transition cursor-pointer"
+            title="Podešavanja izgleda, fontova, teme i fullscreen-a"
           >
-            <Sliders className="w-4 h-4" />
+            <Sliders className="w-3.5 h-3.5 text-blue-500" />
+            <span className="hidden sm:inline">Podešavanja</span>
           </button>
 
-          {/* Quick Dark/Light Theme Toggle (Both Mobile & Desktop) */}
-          <button
-            onClick={handleToggleTheme}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-            title={isCurrentlyDark ? 'Prebaci na svetlu temu (Light)' : 'Prebaci na tamnu temu (Dark)'}
-            aria-label="Promeni temu"
-          >
-            {isCurrentlyDark ? (
-              <Sun className="w-4 h-4 text-amber-400 animate-in spin-in-180 duration-200" />
-            ) : (
-              <Moon className="w-4 h-4 text-blue-600 animate-in spin-in-180 duration-200" />
-            )}
-          </button>
+          {/* Pomoć sa ugrađenim "i" dugmetom za prikaz modala "O aplikaciji" */}
+          <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 p-0.5 text-xs font-medium shadow-2xs">
+            <button
+              onClick={onOpenHelp}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+              title="Pomoć i uputstvo za upotrebu (F1)"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="hidden sm:inline">Pomoć</span>
+            </button>
+            <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+            <button
+              onClick={onOpenAbout}
+              className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
+              title="O aplikaciji (About) [~]"
+              aria-label="O aplikaciji"
+            >
+              <Info className="w-3.5 h-3.5 text-indigo-500" />
+            </button>
+          </div>
 
           {/* Mobile Menu Toggle Button */}
           <button
@@ -789,6 +794,17 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
+                    onImportDocx();
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
+                >
+                  <FileUp className="w-4 h-4 text-blue-600" />
+                  <span>Uvezi iz .DOCX (.docx)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
                     onOpenUrl();
                   }}
                   className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
@@ -833,16 +849,29 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                   <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
                     Izvoz i deljenje
                   </div>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onExportDocx();
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
-                  >
-                    <FileType className="w-4 h-4 text-blue-600" />
-                    <span>Izvoz u Word (.docx)</span>
-                  </button>
+                  {isDocxDocument ? (
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onDownloadMarkdown();
+                      }}
+                      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold transition text-left"
+                    >
+                      <FileCode className="w-4 h-4 text-blue-600" />
+                      <span>Izvoz u .md format</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onExportDocx();
+                      }}
+                      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
+                    >
+                      <FileType className="w-4 h-4 text-blue-600" />
+                      <span>Izvoz u Word (.docx)</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);
@@ -873,16 +902,18 @@ export const HeaderToolbar: React.FC<HeaderToolbarProps> = ({
                     <FileType className="w-4 h-4 text-rose-500" />
                     <span>Sačuvaj kao PDF (.pdf) (Ctrl+P)</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onDownloadMarkdown();
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
-                  >
-                    <FileCode className="w-4 h-4 text-amber-500" />
-                    <span>Preuzmi Markdown fajl (.md)</span>
-                  </button>
+                  {!isDocxDocument && (
+                    <button
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        onDownloadMarkdown();
+                      }}
+                      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium transition text-left"
+                    >
+                      <FileCode className="w-4 h-4 text-amber-500" />
+                      <span>Preuzmi Markdown fajl (.md)</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false);

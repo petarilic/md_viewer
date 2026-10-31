@@ -28,7 +28,7 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
   name: 'Markdown Viewer',
   version: '1.4.0',
   buildNumber: '140',
-  releaseDate: '29. oktobar 2026.',
+  releaseDate: '31. oktobar 2026.',
   shortDescription:
     'Jednostavan i moćan alat za pregled, uređivanje i izvoz Markdown dokumenata.',
   aboutDetails:
@@ -44,8 +44,18 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
   whatsNew: [
     {
       version: '1.4.0',
-      date: '29. oktobar 2026',
+      date: '31. oktobar 2026',
       highlights: [
+        '[Poboljšanje] Novi standardizovani raspored glavnog menija: Leva strana (Novi, Otvori, Šabloni, dinamičko Sačuvaj, Uvoz, dinamičko Izvoz), Srednji deo (Pretraga, Uredi, Podeljeno, Prikaz), Desna strana (Podešavanja, Pomoć sa ugrađenim „i” dugmetom)',
+        '[Poboljšanje] Integracija opcija Fullscreen i Dark/Light u modal Podešavanja: izbor teme interfejsa (Svetla / Tamna / Sistem) i uključivanje prikaza preko celog ekrana (Fullscreen, F11) prebačeni su unutar modala Podešavanja, rasterećujući gornju traku',
+        '[Poboljšanje] Povezivanje modala „O aplikaciji” kroz sekciju Pomoć: dugme „i” za trenutni prikaz informacija o aplikaciji i verziji ugrađeno je direktno u element Pomoć u glavnom meniju, kao i u zaglavlje modala Pomoć',
+        '[Nova funkcija] Uvoz dokumenata u .docx formatu: kroz novu opciju „Uvoz” i odabir „Uvezi iz .DOCX (.docx)” omogućeno je direktno učitavanje Word fajlova uz potpuno očuvanje sadržaja, naslova, tabela, listi, stilova i ugrađenih slika',
+        '[Nova funkcija] Namenski izvoz u .md format za .docx dokumente: nakon učitavanja .docx dokumenta u meniju za izvoz automatski se prikazuje nova opcija „Izvoz u .md format” za preuzimanje konvertovanog dokumenta, dok je opcija za izvoz u .docx automatski uklonjena',
+        '[Poboljšanje] Prilagođavanje statusne trake za mobilni režim: automatsko sakrivanje veličine u KB, broja linija, broja karaktera i vremena čitanja na mobilnim uređajima i užim ekranima radi maksimalno čistog i kompaktnog prikaza bez preklapanja',
+        '[Poboljšanje] Standardizovan novi raspored statusne trake u dnu ekrana: implementiran precizan redosled informacija (1. naziv dokumenta, 2. trenutna sekcija, 3. trenutna strana, 4. veličina u KB, 5. veličina u linijama teksta, 6. broj karaktera, 7. vreme čitanja, 8. status Sačuvano/Nesačuvano, 9. Lokalna obrada)',
+        '[Poboljšanje] Uklanjanje suvišnih elemenata iz donje trake: trajno uklonjena prečica F1 i oznaka verzije radi čistog i preglednog prikaza u dnu ekrana',
+        '[Poboljšanje] Racionalizovan i čistiji radni prostor u glavnom meniju: uklonjena suvišna dugmad „Primer” i „Save as” iz glavne trake sa alatkama i mobilnog menija radi veće preglednosti',
+        '[Poboljšanje] Pojednostavljen i čistiji izgled tabova dokumenata: uklonjena oznaka prikaza (Formatirano, Podeljeno, Prikaz) sa jezičaka otvorenih fajlova, obezbeđujući pregledniji prikaz naziva fajlova uz očuvano individualno pamćenje režima po dokumentu',
         '[Nova funkcija] Izbor formata papira u podešavanjima: podržani standardni i specijalizovani formati A4, A3, A5, US Letter i US Legal sa detaljnim dimenzijama i namenom',
         '[Nova funkcija] Proračun broja strana i živa paginacija u dnu ekrana: na osnovu odabranog formata papira i veličine fonta precizno se računa ukupan broj stranica, a tokom skrolovanja u realnom vremenu se ažurira redni broj strane na kojoj se korisnik nalazi (npr. „Strana 2 od 5 (A4)”) uz direktnu prečicu ka podešavanjima',
         '[Poboljšanje] Integracija formata papira sa PDF izvozom: podrška za sve formate (A4, A3, A5, Letter, Legal) uz automatsko sinhronizovanje izabranog formata iz podešavanja',
@@ -56,9 +66,6 @@ export const APP_ABOUT_CONFIG: AboutConfig = {
         '[Ispravka] Otklonjen problem sa sinhronizovanim skrolovanjem u Split Screen Mode-u: implementirano precizno, proporcionalno i dvosmerno sinhronizovano skrolovanje između otvorenih dokumenata u svim režimima (uključujući složeni vertikalni "Podeljeno" raspored sa 4 paralelna panela)',
         '[Poboljšanje] U opciji "Podeljeno" unutar Split Screen Mode-a dokumenti se prikazuju jedan ispod drugog, a u okviru svakog dokumenta prikazan je Markdown editor paralelno pored formatiranog prikaza (paralelni SplitView za oba dokumenta)',
         '[Poboljšanje] Nezavisno pamćenje režima prikaza po dokumentu: svaki otvoreni dokument sada individualno pamti svoj režim rada (Uredi, Podeljeno ili Prikaz), tako da prebacivanje između tabova automatski vraća sačuvani režim za dati fajl',
-        '[Poboljšanje] Racionalizovan i čistiji radni prostor u glavnom meniju: uklonjena suvišna dugmad „Primer” i „Save as” iz glavne trake sa alatkama i menija radi veće preglednosti',
-        '[Poboljšanje] Pojednostavljen i čistiji izgled tabova dokumenata: uklonjena oznaka prikaza (Formatirano, Podeljeno, Prikaz) sa jezičaka otvorenih fajlova, obezbeđujući pregledniji prikaz naziva fajlova uz očuvano individualno pamćenje režima po dokumentu',
-        '[Poboljšanje] Standardizovan raspored statusne trake u dnu ekrana: implementiran precizan redosled informacija (1. naziv dokumenta, 2. trenutna sekcija, 3. trenutna strana, 4. veličina u KB, 5. veličina u linijama teksta, 6. broj karaktera, 7. vreme čitanja, 8. status Sačuvano/Nesačuvano, 9. Lokalna obrada), uz uklanjanje suvišnih oznaka F1 i verzije radi maksimalne preglednosti',
         '[Nova funkcija] Interaktivno filtriranje izmena u sekciji Novosti i izdanja: dodati tasteri za filtriranje stavki po kategorijama (Sve, Funkcije, Poboljšanja, Ispravke) sa dinamičkim brojačima za svaku grupu',
         '[Poboljšanje] Redizajniran i poravnat prikaz sekcije Novosti i izdanja (Changelog): ravnomerno poravnate kategorije u fiksnim kolonama sa namenskim ikonama, vizuelnim karticama, polumasnim naslovima i automatskim proširenjem širine prozora',
       ],

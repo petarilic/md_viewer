@@ -23,12 +23,14 @@ import {
   Sun,
   Moon,
   GitCompare,
+  Info,
 } from 'lucide-react';
 
 interface HelpModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenSampleGuide?: () => void;
+  onOpenAbout?: () => void;
 }
 
 interface HelpTopic {
@@ -45,6 +47,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({
   isOpen,
   onClose,
   onOpenSampleGuide,
+  onOpenAbout,
 }) => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -249,14 +252,31 @@ export const HelpModal: React.FC<HelpModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-            title="Zatvori (Esc)"
-            aria-label="Zatvori pomoć"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenAbout && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenAbout();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                title="Prikaži informacije o aplikaciji (About) [~]"
+                aria-label="O aplikaciji"
+              >
+                <Info className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="hidden sm:inline">O aplikaciji</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              title="Zatvori (Esc)"
+              aria-label="Zatvori pomoć"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Search & Tabs Filter Bar */}
